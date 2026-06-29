@@ -1,0 +1,476 @@
+# Skribbl.io Backend Architecture & Integration Guide
+
+This guide details the complete blueprint for building a fully compatible **Node.js + Socket.io** backend to integrate with the scraped frontend in the `frontend` folder.
+
+---
+
+## 1. System Overview
+
+Skribbl.io uses a client-server architecture. The frontend handles rendering (drawing canvas, chat UI, lobby controls, podium animations), while the backend handles the game logic, state machine, matchmaking, word selection, canvas sync, and scoring.
+
+```mermaid
+sequenceDiagram
+    participant Client as Client (browser)
+    participant HTTP as HTTP server (API)
+    participant Socket as Socket.io Server (WS)
+
+    Client->>HTTP: POST /api/play (id=roomId OR lang=0)
+    HTTP-->>Client: Returns socket host (e.g., "http://localhost:3000")
+    Client->>Socket: Connect to Socket Server
+    Client->>Socket: Emit "login" (name, avatar, lang, join code)
+    Socket-->>Client: Emit "data" (id=10: Lobby state / users)
+    Note over Client,Socket: Real-time gameplay starts
+```
+
+---
+
+## 2. HTTP Routing
+
+The frontend initiates a game by making a `POST` request to the path `/api/play`. You must implement this endpoint in your HTTP server (e.g. using Express).
+
+### POST `/api/play`
+* **Request Content-Type**: `application/x-www-form-urlencoded`
+* **Request Body**:
+  * For joining matchmaking (public game): `lang=<lang_id>` (e.g. `lang=0` for English).
+  * For joining a private room: `id=<room_id>`.
+* **Behavior**:
+  * The backend must look up an existing lobby with space, or create a new lobby.
+  * For private rooms, the server fetches the specific lobby matching `<room_id>`.
+* **Response**:
+  * **Success Code**: `200 OK`
+  * **Body (Plain Text)**: The socket server address. Example: `http://localhost:3000` (or the server's public IP).
+
+### 2.1 Matchmaking & Random Joining Flow
+
+When a user clicks **"Play!"**, they expect to join a random lobby with other players. The matchmaking sequence is handled as follows:
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Player as Player A (Random User)
+    participant Server as HTTP/WebSocket Server
+    actor PlayersInRoom as Existing Players in Lobby
+
+    Player->>Server: POST /api/play (lang=0)
+    Note over Server: Matchmaking Logic:<br/>Find active public lobby matching language (0)<br/>with open slots (players < maxSlots).<br/>If none exists, create a new public room.
+    Server-->>Player: HTTP 200 OK ("http://localhost:3000")
+    
+    Player->>Server: Open WebSocket Connection
+    Player->>Server: Emit "login" { join: 0, create: 0, lang: 0, name: "Player A", ... }
+    
+    Note over Server: Add Player A to room's player pool.
+    Server->>Player: Emit "data" (id=10: Lobby state, current settings, and other players)
+    Server->>PlayersInRoom: Broadcast "data" (id=1: Player A joined info)
+```
+
+1. **Matchmaking Request**: The client requests to join a random lobby by posting `lang=<lang_id>` to `/api/play`.
+2. **Room Allocation**:
+   - The server maintains a list of active public rooms in memory.
+   - It searches for an active room where:
+     - The room's setting `Settings.LANG` matches the player's `lang_id`.
+     - The room is **public** (`type: 0`).
+     - The number of connected players is less than `Settings.SLOTS` (default: 8 or 12).
+   - If a matching room is found, the server assigns that room.
+   - If no room is found (or all matching rooms are full), the server instantiates a **new public room** in memory.
+3. **Connection Handshake**: The server returns the address of the websocket node. The client opens a websocket connection to that URL.
+4. **Login Verification**:
+   - The client emits the `"login"` event with `"join": 0` and `"create": 0`, indicating they want to be placed in the allocated random matchmaking room.
+   - The server validates the player name and avatar, binds the socket connection to the corresponding room, and assigns a unique `id` to the new player.
+5. **Lobby Synchronization**:
+   - The server sends the new player the initialization payload (`id: 10`) containing the current lobby settings, state, and other players in the room.
+   - The server broadcasts a `"player joined"` message (`id: 1`) to all existing players in the room so their UI renders the new player's card.
+
+---
+
+## 3. Game State Machine
+
+The game is coordinated through a series of states. Transitions between states are managed entirely by the server and broadcasted to clients using packet `11` (`qa`) or `10` (`Ca`).
+
+```mermaid
+stateDiagram-v2
+    [*] --> G_Lobby : Public Matchmaking
+    [*] --> J_Lobby : Private Room
+    
+    G_Lobby --> K_Starting : 2+ Players Join
+    J_Lobby --> K_Starting : Owner clicks Start!
+    
+    K_Starting --> F_RoundStart
+    
+    F_RoundStart --> V_WordSelection : Drawer chosen
+    
+    V_WordSelection --> j_Drawing : Drawer chooses word OR timer runs out
+    
+    j_Drawing --> Z_Reveal : Word guessed OR time runs out
+    
+    Z_Reveal --> V_WordSelection : Next drawer's turn
+    Z_Reveal --> F_RoundStart : Next round begins
+    Z_Reveal --> X_GameOver : All rounds complete
+    
+    X_GameOver --> J_Lobby : Back to Private Lobby
+    X_GameOver --> G_Lobby : Back to Public Lobby
+```
+
+### State Enum Definitions (`L.id` / `e.id`)
+
+| State Constant | Value | UI State Overlay | Action / Behavior |
+| :--- | :---: | :--- | :--- |
+| `G` | `0` | "Waiting for players..." | Shown when < 2 players are in a public lobby. |
+| `K` | `1` | "Game starting in a few seconds..." | Countdown transition before game begins. |
+| `F` | `2` | "Round X" | Round transition overlay (increments round). |
+| `V` | `3` | Word Selection | Drawer selects a word. Others see "[Name] is choosing a word". |
+| `j` | `4` | Active Gameplay | The drawer draws on the canvas; others type guesses in chat. |
+| `Z` | `5` | Round Reveal | Shows correct word, round scores, and end reason. |
+| `X` | `6` | Game Over | Shows podium leaderboard (1st, 2nd, 3rd) and winner. |
+| `J` | `7` | Room Lobby | Private lobby waiting room. Allows configuring settings. |
+
+---
+
+## 4. Socket.io Protocol Specification
+
+The frontend connects via Socket.io and communicates primarily over two event channels:
+1. `login`: Triggered on connection to initialize the player session.
+2. `data`: Multiplexed gameplay events using a payload with `{ id: Number, data: Any }`.
+
+### 4.1 Client-to-Server Events
+
+#### Event: `login`
+Sent by the client immediately after socket connection.
+* **Payload**:
+  ```json
+  {
+    "join": "roomId",      // Room code to join (string or 0)
+    "create": 1,           // 1 if creating private room, 0 if public matchmaking
+    "name": "PlayerName",  // Choosen name
+    "lang": "0",           // Language index string
+    "code": "",            // Optional secret token / hash
+    "avatar": [0, 1, 2, -1] // [eyesIndex, mouthIndex, colorIndex, -1]
+  }
+  ```
+
+#### Event: `data`
+Multiplexed payload format: `{ id: Number, data: Any }`.
+
+* **`id: 6` (Report Player)**:
+  * Sent when a player reports another. Data: `{ id: targetPlayerId, reasons: Bitmask }` (toxic=1, spam=2, botting=4).
+* **`id: 7` (Mute Player)**:
+  * Sent when muting a player. Data: `targetPlayerId`.
+* **`id: 8` (`Sa` - Rate Drawing)**:
+  * Sent when rating the drawing. Data: `1` (like) or `0` (dislike).
+* **`id: 9` (`ka` - Avatar Customization)**:
+  * Sent when a player changes their avatar index in the lobby. Data: `avatarArray`.
+* **`id: 12` (`xa` - Lobby Settings Update)**:
+  * Sent when the lobby owner changes settings (Slots, Rounds, Drawtime, etc.). Data: `{ id: settingIndex, val: settingValue }`.
+* **`id: 18` (`Aa` - Select Word)**:
+  * Sent by the drawer when choosing a word. Data: `choiceIndex` (e.g. `0`, `1`, `2`) or `[choiceIndex1, choiceIndex2]` (in COMBINATION mode).
+* **`id: 19` (`Ia` - Drawing commands)**:
+  * Real-time canvas drawing data. Sent in batches of up to 8 drawing commands. Data: `[[type, color, size, x1, y1, x2, y2], ...]`.
+* **`id: 20` (`Ra` - Clear Canvas)**:
+  * Sent by drawer to clear the screen. No data field required.
+* **`id: 21` (`Ta` - Undo/Sync Canvas Length)**:
+  * Sent by drawer to undo the last stroke. Data: `newCommandsLength` (integer).
+* **`id: 30` (`Na` - Chat Message / Guess)**:
+  * Chat text guess. Data: `"my guess text"` (string).
+
+---
+
+### 4.2 Server-to-Client Events
+
+#### Event: `joinerr`
+If login fails, the server should emit `joinerr` with an error code:
+* `1`: Room not found
+* `2`: Room full
+* `3`: You are on a kick cooldown
+* `4`: You are banned from this room
+* `5`: You are joining rooms too quickly
+* `100`: You are already connected
+* `200`: Too many users from your IP
+* `300`: Kicked too many times
+
+#### Event: `reason`
+If a player gets disconnected due to an administrative action, the server should emit `reason` with:
+* `1`: Kicked
+* `2`: Banned
+
+#### Event: `data`
+The server multiplexes all game updates over this channel using `{ id: Number, data: Any }`.
+
+* **`id: 1` (`ya` - Player Joined)**:
+  * Broadcast to all players when a new user joins.
+  * Data: Player Object:
+    ```json
+    {
+      "id": 12,
+      "flags": 0,             // bitwise flags (e.g., 4 represents ADMIN / Room Owner)
+      "name": "Alex",
+      "avatar": [0, 2, 4, -1],
+      "score": 0,
+      "guessed": false
+    }
+    ```
+* **`id: 2` (`va` - Player Left)**:
+  * Broadcast when a player leaves.
+  * Data: `{ id: playerId, reason: 0_normal/1_kick/2_ban }`.
+* **`id: 5` (`ba` - Kick Vote)**:
+  * Broadcast when votekicking.
+  * Data: `[voterId, targetId, currentVotes, requiredVotes]`.
+* **`id: 8` (`Sa` - Rate Broadcast)**:
+  * Broadcast a player's drawing rating.
+  * Data: `{ id: playerId, vote: 0_dislike/1_like }`.
+* **`id: 9` (`ka` - Avatar Sync)**:
+  * Broadcast updated avatar.
+  * Data: `{ id: playerId, avatar: avatarArray }`.
+* **`id: 90` (`wa` - Name Sync)**:
+  * Broadcast updated name.
+  * Data: `{ id: playerId, name: newName }`.
+* **`id: 10` (`Ca` - Lobby Initialization)**:
+  * Sent directly to the client *only* upon successful login to load the game board.
+  * Data payload structure:
+    ```json
+    {
+      "me": 12,                // The client's unique player ID
+      "type": 0,               // Room type (0 = public, 1 = private)
+      "id": "abcde",           // Room ID (invite code)
+      "settings": [0, 8, 80, 3, 3, 2, 0, 0], // Array of room setting values
+      "users": [ ... ],        // Array of all Player Objects currently in the room
+      "round": 0,              // Current round index (0-indexed)
+      "owner": 12,             // Player ID of the room owner
+      "state": {               // Active game state
+        "id": 7,               // State Enum (e.g., 7 = private lobby)
+        "time": 0,             // Remaining state timer
+        "data": null           // Custom state data
+      }
+    }
+    ```
+* **`id: 11` (`qa` - Game State Transition)**:
+  * Broadcast when the game transitions to a new phase.
+  * Data: `{ id: StateEnum, time: seconds, data: StateCustomData }`.
+    * For `F` (Round Transition): `data` is the round index (integer).
+    * For `V` (Word Selection): `data` is `{ id: drawerId, words: ["apple", "banana", "cherry"] }` (words sent to drawer only; others receive `{ id: drawerId }`).
+    * For `j` (Active Drawing): `data` is `{ id: drawerId, word: [lengthArray], drawCommands: [] }` (guessers receive length hints like `[5]` for apple; drawer receives the full string).
+    * For `Z` (Reveal): `data` is `{ word: "apple", reason: 1_timeout/0_guessed, scores: [playerId, score, deltaScore, ...] }`.
+    * For `X` (Game Over): `data` is list of rankings: `[[playerId, rankIndex, titleStr], ...]`.
+* **`id: 12` (`xa` - Settings Broadcast)**:
+  * Broadcast settings modifications.
+  * Data: `{ id: settingIndex, val: settingValue }`.
+* **`id: 14` (`La` - Timer Tick)**:
+  * Broadcast every second.
+  * Data: `timeRemaining` (integer).
+* **`id: 15` (`Da` - Player Guessed Correctly)**:
+  * Broadcast when a player guesses the word.
+  * Data: `{ id: playerId, word: "guessed_word" }`.
+* **`id: 16` (`$a` - Guess is Close)**:
+  * Sent *only* to the client whose guess was close.
+  * Data: `"GuesserName"` (string).
+* **`id: 17` (`Ea` - Owner Change)**:
+  * Broadcast when a new owner is appointed.
+  * Data: `newOwnerPlayerId`.
+* **`id: 19` (`Ia` - Drawing Stroke Sync)**:
+  * Broadcast canvas stroke commands from drawer.
+  * Data: `[[type, color, size, x1, y1, x2, y2], ...]`.
+* **`id: 20` (`Ra` - Clear Canvas)**:
+  * Broadcast clear canvas command. No data.
+* **`id: 21` (`Ta` - Undo Stroke)**:
+  * Broadcast stroke length removal.
+  * Data: `newCommandsLength` (integer).
+* **`id: 30` (`Na` - Chat Message Broadcast)**:
+  * Broadcast chat messages.
+  * Data: `{ id: senderPlayerId, msg: "text" }`.
+* **`id: 31` (`Wa` - Warnings)**:
+  * Broadcast system warning.
+  * Data: `{ id: warningIndex, data: extraInfo }` (e.g. `{ id: 0 }` for "Need at least 2 players").
+
+---
+
+## 5. Game Logic Mappings & Constants
+
+### 5.1 Lobby Settings Index Array Mapping (`te` enum)
+Lobby configurations are stored in an array matching these indices:
+```javascript
+const Settings = {
+  LANG: 0,              // Language (0 = English, 1 = German, etc.)
+  SLOTS: 1,             // Max players capacity (2-20)
+  DRAWTIME: 2,          // Drawing time in seconds (15-240)
+  ROUNDS: 3,            // Number of rounds (2-10)
+  WORDCOUNT: 4,         // Number of word choices (1-5)
+  HINTCOUNT: 5,         // Number of hints to show (0-5)
+  WORDMODE: 6,          // Word mode (0 = Normal, 1 = Hidden, 2 = Combination)
+  CUSTOMWORDSONLY: 7    // Use custom words only (0 = false, 1 = true)
+}
+```
+
+### 5.2 Round End Reasons (`reason` in state `Z`)
+* `0` (Everyone Guessed): Every active guesser guessed the word before time ran out.
+* `1` (Time is Up): Timer expired.
+* `2` (Drawer Left): The drawing player disconnected.
+* `5` (Drawer Skipped): The drawer did not pick a word in time.
+
+### 5.3 Player Admin Flags (`flags` field)
+* `4`: Player is Lobby Owner (Admin). Shows a crown icon.
+
+---
+
+## 6. Implementation Action Plan
+
+To make the game playable, implement the following in `/backend`:
+
+### Phase 1: Setup Server & API Routing
+1. Initialize a Node.js project using `npm init`.
+2. Install `express`, `socket.io`, `cors`, `bcryptjs`, `jsonwebtoken`, and `razorpay`.
+3. Create `server.js` configuring an Express HTTP Server and a Socket.io Server sharing the same port.
+4. Implement `POST /api/play` to return the socket URL (e.g. `http://localhost:3000`).
+
+### Phase 2: Session and Lobby Management
+1. Structure lobby states in memory or a database (e.g. room object containing settings, list of connected sockets, active words, drawing command lists, current round, timers, etc.).
+2. Handle the `login` event:
+   * Generate a unique ID for each player.
+   * If `create` is 1, generate a room ID, make player owner, and set room properties.
+   * Send the initialization packet `10` (`Ca`) directly to the newly connected user.
+   * Broadcast player join packet `1` (`ya`) to all other players in the room.
+
+### Phase 3: Core Game State Machine & Timer Loops
+1. Coordinate transitions between states:
+   * **Lobby** -> **Starting**: When slots are configured and owner starts or player limit met.
+   * **Round Transition**: Increment round index, set active drawer, broadcast round overlay state `11` (`qa`) with state `F`.
+   * **Word Selection**: Generate 3 random words for the active language. Send choice state `V` to drawer (with words) and other players (without words). Setup a 15-second select timer.
+   * **Active Gameplay**: Once word is chosen (or default picked), broadcast active state `j`. Set up round timer ticking every second and broadcast tick `14` (`La`).
+   * **Reveal**: If word is guessed or timer runs out, calculate scores, transition to reveal state `Z`, send scores, wait 5 seconds, and go to next drawer or end the game.
+   * **Game Over**: If all rounds complete, rank players, broadcast podium state `X`, wait 10 seconds, and return to Lobby.
+
+### Phase 4: Drawing, Chat, and Scoring
+1. **Canvas sync**: Listen for `19` (`Ia`) from the drawer and broadcast it to guessers in the same room. Do the same for clear `20` (`Ra`) and undo `21` (`Ta`).
+2. **Chat guesses**: Listen for `30` (`Na`).
+   * If guess matches the correct word: change player's guessed status, compute score (based on speed/remaining time), award points, broadcast guessed packet `15` (`Da`).
+   * If guess is close: send private close notice `16` (`$a`).
+   * If normal text: broadcast text message `30` (`Na`). (Note: players who already guessed can chat, but their messages must only be visible to other players who have also guessed).
+
+---
+
+## 7. User Authentication (Signup / Login)
+
+To restrict access to the game until a user is authenticated, we introduce a standalone **Authentication Screen** that intercepts the user *before* the Main Home Screen is displayed.
+
+### 7.1 Database Schema (SQLite or MongoDB)
+Since registration uses only custom credentials (no Google sign-in), the user records are managed locally with high security requirements (e.g. bcrypt hashing for passwords).
+
+```sql
+CREATE TABLE users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    username TEXT NOT NULL UNIQUE,
+    password_hash TEXT NOT NULL,
+    has_premium INTEGER DEFAULT 0,        -- 0 = False, 1 = True (for color panel)
+    ad_free_until DATETIME DEFAULT NULL,   -- Expiry timestamp for ad-free status
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+### 7.2 Authentication REST API Endpoints
+* **`POST /api/auth/signup`**:
+  - Request: `{ name, username, password }`
+  - Validation: Verify username uniqueness, enforce password length, hash password using `bcrypt` (10 rounds).
+  - Success Response: `201 Created` with JWT Session Token.
+* **`POST /api/auth/login`**:
+  - Request: `{ username, password }`
+  - Validation: Query user, verify password hash using `bcrypt.compare()`.
+  - Success Response: `200 OK` with JWT Session Token and user status (`has_premium`, `ad_free_until`).
+
+### 7.3 Frontend Authentication Overlay
+1. Upon loading `index.html`, the client checks for a saved token in `localStorage`.
+2. If **no token** exists:
+   - The UI blocks the standard homepage.
+   - It displays a custom **Auth Modal / Screen** overlaid on the home menu, prompting the user to **Sign In** or **Sign Up**.
+3. Once successfully authenticated, the token is saved, the overlay is hidden, and the user's name is auto-filled into the home screen lobby input.
+
+---
+
+## 8. Premium Access & Razorpay Payment Integration
+
+Users can buy a premium upgrade: **₹25 for Lifetime Premium Color Panel Access & 6 Months Ad-Free Gameplay**.
+
+```mermaid
+sequenceDiagram
+    actor User as Player (Client)
+    participant Server as Node.js Express Server
+    participant Gateway as Razorpay API
+
+    User->>Server: POST /api/payment/order (authenticated)
+    Server->>Gateway: Create Order (amount = 2500 paise, currency = "INR")
+    Gateway-->>Server: Return order_id
+    Server-->>User: Return order_id & keys
+    User->>User: Launch Razorpay Checkout Modal
+    User->>Gateway: Submit payment credentials
+    Gateway-->>User: Return payment details (payment_id, signature)
+    User->>Server: POST /api/payment/verify (payment_id, order_id, signature)
+    Note over Server: Cryptographic check:<br/>HmacSHA256(order_id + "|" + payment_id, secret) == signature
+    Server->>Server: Set has_premium = 1 and ad_free_until = Date.now() + 6 months in DB
+    Server-->>User: HTTP 200 Success (Unlock Granted)
+```
+
+### 8.1 API Endpoints
+* **`POST /api/payment/order`**:
+  - Requires valid JWT token in Header.
+  - Server invokes Razorpay Orders API:
+    ```javascript
+    const options = {
+      amount: 2500, // ₹25.00 in paise
+      currency: "INR",
+      receipt: `receipt_user_${user.id}`
+    };
+    const order = await razorpay.orders.create(options);
+    res.json({ success: true, orderId: order.id, amount: order.amount });
+    ```
+* **`POST /api/payment/verify`**:
+  - Requires valid JWT token in Header.
+  - Payload: `{ razorpay_payment_id, razorpay_order_id, razorpay_signature }`.
+  - Verifies payment authenticity, updates database flags:
+    ```javascript
+    const crypto = require("crypto");
+    const hmac = crypto.createHmac("sha256", process.env.RAZORPAY_KEY_SECRET);
+    hmac.update(razorpay_order_id + "|" + razorpay_payment_id);
+    const generated_signature = hmac.digest("hex");
+    
+    if (generated_signature === razorpay_signature) {
+      // Payment successful!
+      await db.updateUserPremium(user.id, {
+        has_premium: 1,
+        ad_free_until: new Date(Date.now() + 6 * 30 * 24 * 60 * 60 * 1000) // 6 months
+      });
+      res.json({ success: true, message: "Premium unlocked!" });
+    } else {
+      res.status(400).json({ success: false, error: "Signature verification failed" });
+    }
+    ```
+
+---
+
+## 9. Frontend Changes (UI Integration Points)
+
+To accommodate the login requirements and premium monetization, the following adjustments must be implemented in the frontend assets:
+
+### 9.1 Homepage "Unlock Premium" Button
+* **Location**: Add a visually outstanding button in the home screen panels (e.g. next to the "Play" and "Create Private Room" buttons).
+* **Identifier**: `button-unlock-premium`.
+* **Behavior**:
+  - If the user is already premium, the button says **"Premium Unlocked! ⭐"** and is disabled.
+  - If not premium, clicking the button triggers the **Razorpay Checkout Modal** using the Razorpay JS SDK (`https://checkout.razorpay.com/v1/checkout.js`).
+
+### 9.2 Game Board Color Panel Toggle
+* **Location**: Rendered directly below the canvas toolbar (`#game-toolbar`).
+* **UI Component**: A custom styled sliding switch:
+  ```html
+  <div class="color-panel-toggle-container">
+      <span class="toggle-label">Enable Premium Colors</span>
+      <label class="switch">
+          <input type="checkbox" id="toggle-color-panel">
+          <span class="slider round"></span>
+      </label>
+  </div>
+  ```
+* **Behavior**:
+  - On change:
+    - If the user is authenticated and `has_premium === 1` in their user profile:
+      - Swaps the background palette elements in `#game-toolbar .colors` with a secondary premium range of colors (e.g. pastel palettes, custom gradients, or full spectrum options).
+    - If the user is **not** premium:
+      - Automatically sets the toggle back to "off".
+      - Redirects/prompts the player to the **Razorpay Upgrade screen** stating: *"Pay ₹25 to unlock premium colors for lifetime and remove ads for 6 months!"*
+

@@ -1,0 +1,12 @@
+{
+  "name": "skribbl-frontend",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Static frontend server for Skribbl Premium",
+  "scripts": {
+    "start": "node static-server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.1"
+  }
+}

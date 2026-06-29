@@ -1,0 +1,171 @@
+{
+  "passed": 30,
+  "total": 33,
+  "results": [
+    {
+      "name": "payment/config mock=false (LIVE TEST keys)",
+      "ok": true,
+      "info": "cfg={\"keyId\":\"rzp_test_T6fWxjbW3UGGAU\",\"mock\":false,\"amount\":2500,\"currency\":\"INR\",\"productName\":\"AdvScribbl Premium (Lifetime + 6 months Ad-Free)\"}"
+    },
+    {
+      "name": "payment/order LIVE -> real order_id (starts order_)",
+      "ok": true,
+      "info": "orderId=order_T6hVLSVMv2jVRy status=200 mock=false"
+    },
+    {
+      "name": "payment/verify with bogus signature rejected",
+      "ok": true,
+      "info": "status=400 data={\"error\":\"Signature verification failed\"}"
+    },
+    {
+      "name": "owner private lobby init id=10 type=1",
+      "ok": true,
+      "info": "roomId=fbde91"
+    },
+    {
+      "name": "victim joined same private room",
+      "ok": true,
+      "info": "lobby=fbde91"
+    },
+    {
+      "name": "owner kick -> id=2 broadcast with reason=1",
+      "ok": true,
+      "info": "broadcast={\"id\":2,\"reason\":1}"
+    },
+    {
+      "name": "victim received private id=100 value=1",
+      "ok": true,
+      "info": "gotId100=1"
+    },
+    {
+      "name": "victim socket disconnected after kick",
+      "ok": true,
+      "info": "disconnected=true"
+    },
+    {
+      "name": "kicked user rejoin blocked (joinerr=3)",
+      "ok": true,
+      "info": "joinerr=3"
+    },
+    {
+      "name": "banee joined room",
+      "ok": true,
+      "info": ""
+    },
+    {
+      "name": "owner ban -> id=2 reason=2",
+      "ok": true,
+      "info": "bcast={\"id\":3,\"reason\":2}"
+    },
+    {
+      "name": "banee received id=100 value=2",
+      "ok": true,
+      "info": "val=2"
+    },
+    {
+      "name": "banned user rejoin blocked (joinerr=4)",
+      "ok": true,
+      "info": "joinerr=4"
+    },
+    {
+      "name": "stranger joined",
+      "ok": true,
+      "info": ""
+    },
+    {
+      "name": "non-owner id:3/id:4 ignored (target2 still connected)",
+      "ok": true,
+      "info": "removed=false"
+    },
+    {
+      "name": "cw owner lobby init",
+      "ok": true,
+      "info": "room=wccmt5"
+    },
+    {
+      "name": "cw guesser joined",
+      "ok": true,
+      "info": ""
+    },
+    {
+      "name": "id=22 with custom words -> id:12 {id:7,val:1} broadcast",
+      "ok": true,
+      "info": "val=1"
+    },
+    {
+      "name": "drawer V state words exclusively from custom list (useOnly=1)",
+      "ok": true,
+      "info": "words=[\"octopus\",\"zebra\",\"zeppelin\"]"
+    },
+    {
+      "name": "public room owner init",
+      "ok": true,
+      "info": "room=pub_wo67ab"
+    },
+    {
+      "name": "4 users in same public room",
+      "ok": true,
+      "info": "ids=pub_wo67ab,pub_wo67ab,pub_wo67ab,pub_wo67ab"
+    },
+    {
+      "name": "self-votekick ignored (no id:5)",
+      "ok": true,
+      "info": "count=0"
+    },
+    {
+      "name": "votekick owner ignored",
+      "ok": true,
+      "info": "count=0"
+    },
+    {
+      "name": "votekick broadcasts id:5 with [voter,target,count,required]",
+      "ok": true,
+      "info": "bcasts=[[2,3,1,2],[4,3,2,2]]"
+    },
+    {
+      "name": "votekick threshold reached -> target removed (id:2)",
+      "ok": true,
+      "info": "bcast={\"id\":3,\"reason\":1}"
+    },
+    {
+      "name": "votekicked user gets a NEW public room (not re-matched into old)",
+      "ok": true,
+      "info": "oldRoom=pub_wo67ab newRoom=pub_pw93oe"
+    },
+    {
+      "name": "votekick ignored in private room",
+      "ok": true,
+      "info": "count=0"
+    },
+    {
+      "name": "spam: id:32 warning sent to spammer",
+      "ok": true,
+      "info": "warn={\"id\":0,\"msg\":\"You are typing too fast\"}"
+    },
+    {
+      "name": "spam: only first 4 broadcasts as id:30 (5th+ dropped)",
+      "ok": true,
+      "info": "gotId30=4"
+    },
+    {
+      "name": "spam throttle resets after 3s",
+      "ok": true,
+      "info": "gotId30=1"
+    },
+    {
+      "name": "rate test: drawer V words received (custom-only)",
+      "ok": false,
+      "info": "words=null"
+    },
+    {
+      "name": "drawing state j reached, drawer has actual word",
+      "ok": false,
+      "info": "word=null"
+    },
+    {
+      "name": "skipping rate/close-guess tests because drawer never entered j",
+      "ok": false,
+      "info": "word missing"
+    }
+  ]
+}

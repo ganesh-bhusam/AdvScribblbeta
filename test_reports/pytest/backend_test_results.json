@@ -1,0 +1,151 @@
+{
+  "passed": 20,
+  "total": 29,
+  "results": [
+    {
+      "name": "signup 201 + token",
+      "ok": true,
+      "info": "status=201"
+    },
+    {
+      "name": "signup duplicate username -> 409",
+      "ok": true,
+      "info": "status=409"
+    },
+    {
+      "name": "signup duplicate email -> 409",
+      "ok": true,
+      "info": "status=409"
+    },
+    {
+      "name": "signup short password -> 400",
+      "ok": true,
+      "info": "status=400"
+    },
+    {
+      "name": "signup invalid email -> 400",
+      "ok": true,
+      "info": "status=400"
+    },
+    {
+      "name": "login correct -> 200 + token",
+      "ok": true,
+      "info": "status=200"
+    },
+    {
+      "name": "login wrong pw -> 401",
+      "ok": true,
+      "info": "status=401"
+    },
+    {
+      "name": "/me with token -> 200",
+      "ok": true,
+      "info": "status=200"
+    },
+    {
+      "name": "/me without token -> 401",
+      "ok": true,
+      "info": "status=401"
+    },
+    {
+      "name": "languages: 9 langs incl required",
+      "ok": true,
+      "info": "count=9 names=English,Hinglish,Tamiglish,Teluglish,Benglish,Marathiglish,Gujaratinglish,Kannadaglish,Malayalaglish"
+    },
+    {
+      "name": "POST /api/play lang=0 -> roomId + type=0",
+      "ok": true,
+      "info": "status=200 body={\"roomId\":\"pub_qipn97\",\"type\":0}"
+    },
+    {
+      "name": "POST /api/private -> roomId",
+      "ok": true,
+      "info": "status=200"
+    },
+    {
+      "name": "payment/config returns expected fields",
+      "ok": false,
+      "info": "cfg={\"keyId\":\"rzp_test_T6fWxjbW3UGGAU\",\"mock\":false,\"amount\":2500,\"currency\":\"INR\",\"productName\":\"AdvScribbl Premium (Lifetime + 6 months Ad-Free)\"}"
+    },
+    {
+      "name": "payment/order MOCK -> orderId starts order_mock_",
+      "ok": false,
+      "info": "orderId=order_T6hWo44Ocu1flm"
+    },
+    {
+      "name": "payment/verify MOCK -> success",
+      "ok": false,
+      "info": "data={\"error\":\"Missing payment fields\"}"
+    },
+    {
+      "name": "/me shows has_premium=true after verify",
+      "ok": false,
+      "info": "premium=false adFreeMonths=0.00"
+    },
+    {
+      "name": "/api/terms returns HTML",
+      "ok": true,
+      "info": "status=200"
+    },
+    {
+      "name": "/api/credits returns HTML",
+      "ok": true,
+      "info": "status=200"
+    },
+    {
+      "name": "socket no-token rejected",
+      "ok": true,
+      "info": "err=AUTH_REQUIRED"
+    },
+    {
+      "name": "socket login -> data id=10 lobby init",
+      "ok": true,
+      "info": "roomId=pub_qipn97 owner=1"
+    },
+    {
+      "name": "owner flags include & 4",
+      "ok": true,
+      "info": "flags=4"
+    },
+    {
+      "name": "two users same public lang -> same room",
+      "ok": true,
+      "info": "roomA=pub_qipn97 roomB=pub_qipn97"
+    },
+    {
+      "name": "owner received id=1 player-joined broadcast",
+      "ok": true,
+      "info": "sawJoin=true"
+    },
+    {
+      "name": "private room created via login{create:1} type=1",
+      "ok": true,
+      "info": "type=1"
+    },
+    {
+      "name": "bot spawn via {id:50}",
+      "ok": false,
+      "info": "no id=1 broadcast"
+    },
+    {
+      "name": "socket no-token rejected (timeout)",
+      "ok": false,
+      "info": "no event"
+    },
+    {
+      "name": "socket login id=10 (timeout)",
+      "ok": false,
+      "info": "no lobby received"
+    },
+    {
+      "name": "start game -> state K -> F -> V transitions",
+      "ok": false,
+      "info": "K=false F=false V=false"
+    },
+    {
+      "name": "V state delivers words to drawer OR non-drawer (one of both)",
+      "ok": false,
+      "info": "drawerWords=undefined nonDrawerNoWords=null"
+    }
+  ]
+}

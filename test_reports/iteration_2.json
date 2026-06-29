@@ -1,0 +1,53 @@
+{
+  "summary": "Iteration 2 backend+frontend testing of the 7 new spec features (kick id:3, ban id:4, votekick id:5, rate id:8, custom-words start id:22, spam id:32, close-guess id:16) plus LIVE-TEST Razorpay regression. 36/38 backend test cases PASS. Frontend: all 9 new data-testids exist, custom-words textarea + useOnly checkbox visible in private lobby, player-menu and rate-bar wired, zero console errors. Two failing assertions both stem from ONE real backend bug (see RCA): owner kick/ban (and votekick removal) broadcast id:2 with reason=0 instead of the intended 1/2 because kickPlayerSocket disconnects the kicked socket BEFORE removePlayer runs, and the disconnect handler in server.js wins the race calling removePlayer(playerId, 0).",
+  "backend_issues": {
+    "critical": [
+      {
+        "endpoint": "socket data id:3 (ownerKick) / id:4 (ownerBan) / id:5 (votekick threshold)",
+        "issue": "id:2 broadcast carries reason=0 instead of reason=1 (kick) / reason=2 (ban) — observers in the room cannot distinguish a kick/ban from a normal leave. Functional side-effects (player removed, id:100 sent privately, userId added to kicked/bannedUserIds, rejoin blocked with joinerr 3/4) all work correctly; only the broadcast 'reason' byte is wrong.",
+        "priority": "HIGH"
+      }
+    ],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "PrivateLobby Start! button",
+        "issue": "Start! button is NOT disabled when the room has only 1 player (server still rejects via id:31 broadcast). Minor UX nit; functionally fine.",
+        "selector": "button:has-text('Start!')",
+        "priority": "LOW"
+      }
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/backend_test_v2.js",
+    "/app/test_reports/pytest/backend_test_v2_results.json",
+    "/app/backend/tests/backend_test.js (iteration-1 regression file, still green)"
+  ],
+  "action_items": [
+    "Fix kick/ban/votekick reason-byte race in gameEngine.js: call removePlayer(target.id, REASON) BEFORE kickPlayerSocket(target), OR mark socket as 'kicked'/'banned' so the disconnect handler skips its default removePlayer(playerId, 0). Suggested patch — swap the order in ownerKick/ownerBan/votekick OR set socket._mod = reason and check it in server.js disconnect handler. Affects 3 spots in gameEngine.js: ownerKick (~L463), ownerBan (~L472), votekick threshold (~L500)."
+  ],
+  "critical_code_review_comments": [
+    "gameEngine.js — kickPlayerSocket → disconnect handler race (described above). Race is deterministic in Node socket.io (disconnect handler fires synchronously inside the next tick) so this bug reproduces 100%.",
+    "gameEngine.js setCustomWords accepts payload.words as comma string OR array — good, but does NOT trim duplicates/empties before slicing to 200; passes filter() so OK in practice.",
+    "gameEngine.js receiveChat spam window counts ALL chats including those that would not have been broadcast (e.g. drawer chats during j-state are silently ignored after being counted). Consequence: a drawer who typo-spams could lock themselves out of post-round chat for 3s. Edge case, low priority.",
+    "server.js disconnect handler always calls removePlayer(playerId, 0) without checking whether a moderation reason was just set — this is the root cause of the kick/ban reason-byte bug.",
+    "Frontend lobby: Start! button is not disabled with <2 players; server rejects but UX feedback (id:31) flashes only briefly. Minor."
+  ],
+  "updated_files": [
+    "/app/backend/tests/backend_test_v2.js (new — 38 socket-level assertions for iteration 2)"
+  ],
+  "success_rate": {
+    "backend": "94.7% (36/38)",
+    "frontend": "100% (all new data-testids + custom-words flow verified, zero console errors)"
+  },
+  "test_credentials": "Existing alex_tester/secret123 verified, but tests prefer disposable TEST_<rand> + ui2_<rand> users via /api/auth/signup (no DB pollution beyond user rows).",
+  "seed_data_creation": "Per-run TEST_* signup users; rooms are in-memory and auto-cleanup on socket disconnect.",
+  "retest_needed": true,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Backend stack is Node/Express+Socket.io (NOT FastAPI). Two test files now exist: /app/backend/tests/backend_test.js (iteration-1 regression) and /app/backend/tests/backend_test_v2.js (iteration-2 new features). Run: `cd /app/backend && node tests/backend_test_v2.js`. Razorpay is now in LIVE TEST mode (PAYMENT_MOCK_MODE=0): /api/payment/order returns a real order_<id> from Razorpay; /api/payment/verify still HMAC-checks. Do NOT actually capture a payment in CI. After main agent fixes the kick/ban/votekick reason race, the 2 failing assertions ('owner kick -> id=2 broadcast with reason=1' and 'owner ban -> id=2 reason=2') in backend_test_v2 should turn green; rerun the same script to confirm.",
+  "rca of the issue": "Bug: id:2 broadcast on owner kick/ban (and votekick removal) carries reason=0 instead of reason=1/2. Reproduction: owner emits {id:3,data:<victimPlayerId>} in private room with >=2 players → other players receive {id:2,data:{id:<victimPlayerId>,reason:0}} (observed in backend_test_v2.js output: `broadcast={\"id\":2,\"reason\":0}`). Root cause: gameEngine.js ownerKick (and ownerBan, votekick) calls kickPlayerSocket(target) BEFORE removePlayer(target.id, 1). kickPlayerSocket invokes sock.disconnect(true), which fires server.js's socket.on('disconnect') handler. That handler calls room.removePlayer(socket.playerId, 0) — broadcasting id:2 with reason=0 — and removes the player from the array. By the time ownerKick's own removePlayer(target.id, 1) runs, players.findIndex returns -1 so it bails before broadcasting. Net effect: room receives reason=0 for every kick/ban/votekick removal. Mitigation (one-line fix): swap the two calls in ownerKick/ownerBan/votekick so removePlayer(target.id, REASON) runs FIRST (broadcasting the right reason), then kickPlayerSocket(target) disconnects the socket — the subsequent disconnect handler will findIndex===-1 and be a harmless no-op. Alternative: set sock._modReason on the target socket before disconnect and skip removePlayer in the disconnect handler when that flag is set."
+}
