@@ -988,5 +988,115 @@
     "has_premium": 0,
     "ad_free_until": null,
     "created_at": "2026-06-30T14:15:16.899Z"
+  },
+  {
+    "id": 100,
+    "name": "TEST User",
+    "username": "TEST_fli2f5gf",
+    "email": "test_8nj0ou3j@x.dev",
+    "password_hash": "$2a$10$bslFX/cCGx93tHvrV8jCj.mh9Ip7RNPTRgrTkxrWz1LkqOwli6nn2",
+    "has_premium": 0,
+    "ad_free_until": null,
+    "created_at": "2026-06-30T15:16:10.803Z"
+  },
+  {
+    "id": 101,
+    "name": "TEST_pso96fq0",
+    "username": "TEST_pso96fq0",
+    "email": "TEST_pso96fq0@x.dev",
+    "password_hash": "$2a$10$m7F1B/9w2OclabNbpFsqcOmIthzkiC2X/LbAlNYJjUSekVzmwM9Jy",
+    "has_premium": 0,
+    "ad_free_until": null,
+    "created_at": "2026-06-30T15:18:15.297Z"
+  },
+  {
+    "id": 102,
+    "name": "TEST_O_tpzred3z",
+    "username": "TEST_O_tpzred3z",
+    "email": "TEST_O_tpzred3z@x.dev",
+    "password_hash": "$2a$10$BHv6Ifu5pvlXaS0jTBGZq.BSE0FY2nsK6mZ9fBjGmKIscagiSTo6m",
+    "has_premium": 0,
+    "ad_free_until": null,
+    "created_at": "2026-06-30T15:18:16.000Z"
+  },
+  {
+    "id": 103,
+    "name": "TEST_V_8ybe0dkj",
+    "username": "TEST_V_8ybe0dkj",
+    "email": "TEST_V_8ybe0dkj@x.dev",
+    "password_hash": "$2a$10$SfLYNfWJWDRHPjg8meqQRuzld9f.CpNQwjXoAH7/WwJD4UQrXyv1q",
+    "has_premium": 0,
+    "ad_free_until": null,
+    "created_at": "2026-06-30T15:18:16.216Z"
+  },
+  {
+    "id": 104,
+    "name": "TEST_W_oncxbwqt",
+    "username": "TEST_W_oncxbwqt",
+    "email": "TEST_W_oncxbwqt@x.dev",
+    "password_hash": "$2a$10$0C5/jTG6u7BqTUJuwXxpBu0T46c47Rly9DT4lE2v7P2FW7L4SJp8W",
+    "has_premium": 0,
+    "ad_free_until": null,
+    "created_at": "2026-06-30T15:18:16.748Z"
+  },
+  {
+    "id": 105,
+    "name": "TEST_B_sj908bhb",
+    "username": "TEST_B_sj908bhb",
+    "email": "TEST_B_sj908bhb@x.dev",
+    "password_hash": "$2a$10$/KC35Hs42/jQ7EEQKnee2OpzL4Kuzs8dAafq5.kBJxuN7S/clENx6",
+    "has_premium": 0,
+    "ad_free_until": null,
+    "created_at": "2026-06-30T15:18:17.737Z"
+  },
+  {
+    "id": 106,
+    "name": "TEST_S_h3km0sec",
+    "username": "TEST_S_h3km0sec",
+    "email": "TEST_S_h3km0sec@x.dev",
+    "password_hash": "$2a$10$XdERprxKUHS3WQjqq0GmieZwd3B1jdWlsPKtQ1NPHlS32vHKACTUa",
+    "has_premium": 0,
+    "ad_free_until": null,
+    "created_at": "2026-06-30T15:18:18.653Z"
+  },
+  {
+    "id": 107,
+    "name": "TEST_T_0z4xwi7x",
+    "username": "TEST_T_0z4xwi7x",
+    "email": "TEST_T_0z4xwi7x@x.dev",
+    "password_hash": "$2a$10$ON8nYC7ZqHqS4zrjtydvPuFprsco/tjpJAi8ehStW84WmPIQGmyGK",
+    "has_premium": 0,
+    "ad_free_until": null,
+    "created_at": "2026-06-30T15:18:18.750Z"
+  },
+  {
+    "id": 108,
+    "name": "TEST_CW_lsda439p",
+    "username": "TEST_CW_lsda439p",
+    "email": "TEST_CW_lsda439p@x.dev",
+    "password_hash": "$2a$10$nowMGMSxd7ItBv.fq2GEl.6W4K8o2D6BRW3JsVd1Besrr2t/nwD22",
+    "has_premium": 0,
+    "ad_free_until": null,
+    "created_at": "2026-06-30T15:18:19.861Z"
+  },
+  {
+    "id": 109,
+    "name": "TEST_CW2_g7f9e6sb",
+    "username": "TEST_CW2_g7f9e6sb",
+    "email": "TEST_CW2_g7f9e6sb@x.dev",
+    "password_hash": "$2a$10$U1REerulg11mAFI0AY7/EOiwtOz3sJkLLPnSw4NO9yk9ru5TzwHY6",
+    "has_premium": 0,
+    "ad_free_until": null,
+    "created_at": "2026-06-30T15:18:19.973Z"
+  },
+  {
+    "id": 110,
+    "name": "TEST_PA_ugt1o7d9",
+    "username": "TEST_PA_ugt1o7d9",
+    "email": "TEST_PA_ugt1o7d9@x.dev",
+    "password_hash": "$2a$10$GA6N/xFVSVacvI7hpuPVgu00WAg3Am8sFecRamrPxlYU/I7QrQ37m",
+    "has_premium": 0,
+    "ad_free_until": null,
+    "created_at": "2026-06-30T15:18:28.023Z"
   }
 ]

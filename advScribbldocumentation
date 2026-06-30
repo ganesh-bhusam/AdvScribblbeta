@@ -1,0 +1,248 @@
+# AdvScribbl Complete System Documentation
+
+Welcome to **AdvScribbl**! This is a modernized, premium multiplayer drawing and guessing game modeled after the classic *skribbl.io*. 
+
+This document serves as your complete guide to the codebase. It covers the architectural design, frontend and backend structures, database implementation, API routes, security measures, and development workflows.
+
+---
+
+## 1. Project Overview & Technologies
+
+AdvScribbl is built using a modern **Node.js** backend and a lightweight, high-performance **Vanilla HTML/CSS/JS** frontend.
+
+### Frontend Technologies
+*   **HTML5 Canvas API**: Used to render, record, and sync real-time brush strokes, shape outlines (lines, circles, rectangles), and flood fills (bucket tool).
+*   **Vanilla CSS (CSS Variables & Gradients)**: Implements a custom, high-contrast wood-panel interface with corner screws. No heavy CSS framework (like Tailwind) is used, giving maximum style control and keeping the layout lightweight.
+*   **Google Fonts (Outfit & System Fonts)**: Provides modern typography.
+*   **Socket.io-Client**: Connects the client to the server via WebSockets with multiplexed event streams.
+*   **Razorpay Checkout SDK**: Integrated client-side to prompt users for premium payments.
+
+### Backend Technologies
+*   **Node.js**: The host execution runtime for the backend.
+*   **Express**: Lightweight web framework used to expose HTTP API routing and serve static pages.
+*   **Socket.io**: Powers real-time, bi-directional, event-based communication between players and lobbies.
+*   **JSON-Flat Database (`db.js`)**: A custom, lightweight flat-file JSON database simulating SQLite queries (`get()` and `run()`).
+*   **Bcryptjs**: Used to securely hash user passwords using a one-way salt wrapper before saving to disk.
+*   **Jsonwebtoken (JWT)**: Generates secure, signed session tokens for user authentication.
+*   **Razorpay Node SDK**: Creates and signs payment orders with cryptographic security.
+
+---
+
+## 2. System Architecture & Workflows
+
+AdvScribbl relies on a **Client-Server Architecture** with hybrid HTTP (REST APIs) and WebSocket protocols.
+
+```mermaid
+sequenceDiagram
+    participant User as Client (Browser)
+    participant Express as Express Server (HTTP)
+    participant GameEngine as Socket.io Server (WS)
+    participant Database as db.js (JSON File)
+
+    User->>Express: POST /api/auth/signup
+    Express->>Database: Query/Save user data (bcrypt hash)
+    Database-->>Express: Confirmed save
+    Express-->>User: HTTP 201 + JWT Token
+
+    User->>Express: POST /api/play (lang=0)
+    Note over Express: Allocate user to public lobby
+    Express-->>User: HTTP 200 {"roomId": "pub_123", "type": 0}
+
+    User->>GameEngine: Establish WS Connection (with JWT)
+    Note over GameEngine: Verify JWT token & user ID
+    GameEngine->>User: Emit "data" (id=10: Lobby state)
+    GameEngine->>GameEngine: Spin up Game Loop
+```
+
+### The Matching & Login Workflow
+1.  **Lobby Assignment**: The client posts to `/api/play` (specifying their language) or `/api/private`. The server matches them to a room with open slots.
+2.  **Websocket Handshake**: The client connects to the WebSocket endpoint `/api/socket.io/` sending their JWT token.
+3.  **Lobby Initialization**: Once verified, the server sends the client packet `10` (`Ca`), containing the current lobby settings, list of players, and active game state. The player is broadcasted to the room as joined (packet `1`).
+
+---
+
+## 3. The Backend Game Engine
+
+The game's lifecycle is managed by [gameEngine.js](file:///c:/Users/PK'S/OneDrive/Desktop/AdvScribblw-with-backend-main/backend/gameEngine.js) using rooms and state machines.
+
+### Game State Transitions (`STATE`)
+The engine cycles through these states based on timers and actions:
+
+| State Constant | Enum Value | Label / Phase | Description |
+| :--- | :---: | :--- | :--- |
+| `STATE.G` | `0` | Waiting for Players | Active when < 2 players are present in a public lobby. |
+| `STATE.K` | `1` | Starting | Countdown (3s) before the round begins. |
+| `STATE.F` | `2` | Round Start | Displays the round number overlay and resets player guess states. |
+| `STATE.V` | `3` | Word Selection | The drawer is prompted to pick a word (15s timer). |
+| `STATE.j` | `4` | Active Gameplay | The drawer draws on the canvas while others type guesses in chat. |
+| `STATE.Z` | `5` | Reveal Phase | Reveals the correct word and displays the round's scores. |
+| `STATE.X` | `6` | Game Over | Displays the podium leaderboard (winner). |
+| `STATE.J` | `7` | Private Lobby | Waiting room for private rooms to configure settings. |
+
+### Core Gameplay Mechanics
+*   **Levenshtein Distance**: When a guess is submitted, the engine calculates the Levenshtein distance between the guess and the target word. If the distance is 1 or 2, the server triggers a **"Close Guess"** warning (`id: 16`) visible only to that user.
+*   **Word Selection**: Lobbies support 9 languages (English + 8 Romanized Indian dialects). Lobbies also support custom word inputs.
+*   **Autoplay Bots**: The server can generate artificial players (e.g., Picasso, Frida) that join rooms, vote, and automatically produce draw paths on the canvas when it is their turn.
+
+---
+
+## 4. The Database Layer
+
+Instead of using SQLite or MongoDB (which often cause installation issues on Windows/Node 24 systems), AdvScribbl uses a custom JavaScript mock database system in [db.js](file:///c:/Users/PK'S/OneDrive/Desktop/AdvScribblw-with-backend-main/backend/db.js).
+
+### JSON Flat-Files
+The data is persisted in two files:
+*   [users_db.json](file:///c:/Users/PK'S/OneDrive/Desktop/AdvScribblw-with-backend-main/backend/data/users_db.json): Stores user records, password hashes, registration times, and premium fields.
+*   `payments_db.json`: Logs order receipts, amount counts, and processing statuses.
+
+### Synchronous & Atomic Transactions
+```javascript
+function readJSON(file) {
+  if (!fs.existsSync(file)) return [];
+  try { return JSON.parse(fs.readFileSync(file, 'utf8')); }
+  catch (err) { return []; }
+}
+function writeJSON(file, data) {
+  fs.writeFileSync(file, JSON.stringify(data, null, 2), 'utf8');
+}
+```
+All database queries (`get` and `run`) operate **synchronously**. Since Node.js is single-threaded, running database reads and writes synchronously ensures that operations are executed atomically. This prevents race conditions where concurrent signups could overwrite each other on disk.
+
+---
+
+## 5. HTTP and WebSocket APIs
+
+### HTTP API Endpoints (REST)
+
+All HTTP routes are prefixed with `/api` to route through ingress load balancers.
+
+#### 1. Authentication
+*   `POST /api/auth/signup`: Registers a new user. Enforces strict field requirements (valid email structure, password length ≥ 6, unique username).
+*   `POST /api/auth/login`: Authenticates a user and returns a JWT token.
+*   `GET /api/auth/me`: Refreshes the user profile and fetches the latest status.
+
+#### 2. Payments
+*   `GET /api/payment/config`: Returns the active Razorpay API key ID and details about mock payment settings.
+*   `POST /api/payment/order`: Authenticates the user and opens a transaction order on Razorpay for ₹25 (2500 paise).
+*   `POST /api/payment/verify`: Cryptographically validates the Razorpay checkout signature.
+
+#### 3. General
+*   `GET /api/languages`: Returns the list of supported languages.
+*   `GET /api/terms`: Serves the terms of service.
+*   `GET /api/credits`: Serves the credits page.
+
+### WebSocket Socket.io Packets (`id` Map)
+
+WS events communicate over the multiplexed `data` channel with a payload format of `{ id: Number, data: Any }`.
+
+#### Client-to-Server
+*   `id: 6`: Report player (toxic, spam, botting).
+*   `id: 7`: Mute player.
+*   `id: 8`: Rate drawing (like/dislike).
+*   `id: 9`: Custom avatar sync.
+*   `id: 12`: Owner settings modification.
+*   `id: 18`: Select word from choices.
+*   `id: 19`: Real-time drawing commands (batched arrays).
+*   `id: 20`: Clear canvas.
+*   `id: 21`: Undo canvas command.
+*   `id: 30`: Submit chat message/guess.
+
+#### Server-to-Client
+*   `id: 1`: Broadcast player join.
+*   `id: 2`: Broadcast player exit.
+*   `id: 5`: Broadcast votekick update.
+*   `id: 8`: Broadcast rating statistics.
+*   `id: 9`: Broadcast avatar update.
+*   `id: 10`: Initialize lobby details.
+*   `id: 11`: Broadcast game state transition.
+*   `id: 12`: Broadcast setting updates.
+*   `id: 13`: Send word hint letters.
+*   `id: 14`: Sync countdown clock.
+*   `id: 15`: Broadcast player guessed correctly.
+*   `id: 16`: Notify guess is close (Levenshtein distance alert).
+*   `id: 17`: Broadcast lobby ownership transfer.
+*   `id: 19`: Sync real-time canvas paths.
+*   `id: 20`: Clear canvas.
+*   `id: 21`: Sync canvas undo.
+*   `id: 30`: Sync chat feed messages.
+*   `id: 32`: private warning for chat spam.
+
+---
+
+## 6. Premium Upgrades & Payment Gateway
+
+Users can upgrade to premium for **₹25.00** to unlock the **Premium Color Palette** for lifetime drawing and **6 Months of Ad-Free Gameplay**.
+
+```mermaid
+sequenceDiagram
+    participant User as Client JS
+    participant RP as Razorpay SDK
+    participant API as Backend Route
+
+    User->>API: POST /api/payment/order (JWT auth)
+    API-->>User: Returns orderId
+    User->>RP: Razorpay.open(orderId, keyId)
+    Note over RP: Opens checkout modal for payment
+    RP-->>User: Returns payment_id & signature
+    User->>API: POST /api/payment/verify
+    Note over API: Verify: HmacSHA256(order_id + "|" + payment_id, secret)
+    API-->>User: HTTP 200 (Success)
+```
+
+### Signature Verification
+To prevent users from spoofing successful payments, the backend cryptographically verifies the payment signature using your Razorpay Secret:
+```javascript
+const hmac = crypto.createHmac('sha256', KEY_SECRET);
+hmac.update(`${razorpay_order_id}|${razorpay_payment_id}`);
+const expected = hmac.digest('hex');
+if (expected === razorpay_signature) {
+  // Grant Premium & update DB
+}
+```
+
+---
+
+## 7. Security Hardening
+
+The codebase includes several built-in security features:
+
+1.  **JWT Verification**: Secured socket handshakes prevent unauthorized clients from listening to game streams.
+2.  **Rate Limiting**: Auth routes (`/signup`, `/login`) are rate-limited to **10 requests per 60 seconds per IP** using an in-memory tracker in `backend/server.js` to block brute-force attacks.
+3.  **Spam Shield**: Chat messages are tracked using a sliding window. If a user sends more than **4 messages in 3 seconds**, the messages are dropped, and they receive a private warning.
+4.  **CORS Whitelist Protection**: Cross-Origin Resource Sharing is locked down to specific allowed domains listed in the backend `.env` configuration.
+5.  **WS Buffer Size Cap**: The maximum WebSocket packet buffer size is limited to **512 KB** (reduced from 5 MB) to mitigate buffer-overflow Denial of Service (DoS) attacks.
+6.  **Draw Command Throttling**: Drawing coordinates are capped at a maximum of **200 commands per batch** to prevent canvas spamming.
+
+---
+
+## 8. Development & Deployment Guide
+
+### Configuration (`.env`)
+Create a file named [backend/.env](file:///c:/Users/PK'S/OneDrive/Desktop/AdvScribblw-with-backend-main/backend/.env) with the following variables:
+```ini
+PORT=8001
+JWT_SECRET=YOUR_SECURE_RANDOM_SECRET_KEY
+PAYMENT_MOCK_MODE=1 # Set to 0 to enable live Razorpay transactions
+RAZORPAY_KEY_ID=YOUR_RAZORPAY_KEY
+RAZORPAY_KEY_SECRET=YOUR_RAZORPAY_SECRET
+SUPPORT_EMAIL=support@advscribbl.app
+ALLOWED_ORIGINS=http://localhost:3000,http://localhost:8001
+```
+
+### Running Locally
+1.  **Install dependencies**:
+    ```bash
+    cd backend && npm install
+    cd ../frontend && npm install
+    ```
+2.  **Start the backend server**:
+    ```bash
+    cd backend
+    npm run dev # Runs on Port 8001
+    ```
+3.  **Start the frontend static server**:
+    ```bash
+    cd frontend
+    npm start # Runs on Port 3000
+    ```
+4.  Open `http://localhost:3000` in your browser to play the game!

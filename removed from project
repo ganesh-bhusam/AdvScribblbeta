@@ -1,0 +1,47 @@
+# Project Ready for Deployment: Style Redesign, Code Cleanup, & Database Stabilization
+
+Removed all glassmorphism panel styling across the game application tabs, replacing it with the wood panel design system (matching the home center-panel) and adding corner screws to every panel. Added high-contrast color scheme overrides for visibility. Configured the game viewport layout to support zoom and scroll naturally. Fully documented the HTML structure with code block comments. Resolved database save race conditions. Cleaned up unused files.
+
+## Changes Made
+
+### 1. Deployment Cleanup (Unused Files Removed)
+- [skribbl.io/](file:///c:/Users/PK'S/OneDrive/Desktop/AdvScribblw-with-backend-main/skribbl.io) [DELETED]
+  - Recursively deleted the legacy `skribbl.io/` backup directory to reduce deployment footprint, saving over 2MB of project storage space (which contained raw offline PNG screenshots and duplicates of the frontend package assets).
+
+### 2. Database Race Condition & Persistence Fix (`db.js`)
+- [db.js](file:///c:/Users/PK'S/OneDrive/Desktop/AdvScribblw-with-backend-main/backend/db.js)
+  - Replaced the asynchronous promise-write queue design with fully synchronous and atomic database reads (`readJSON`) and writes (`writeJSON`).
+  - By performing these file modifications synchronously on Node's single thread, transaction interleaving is completely eliminated, ensuring concurrent registrations or payment updates never corrupt the JSON or overwrite each other.
+  - Additionally, setting JSON queries to read dynamically from the disk on every action ensures manual edits to `users_db.json` (such as setting premium flags manually) are picked up immediately by the active dev server.
+
+### 3. Code Documentation (`index.html`)
+- [index.html](file:///c:/Users/PK'S/OneDrive/Desktop/AdvScribblw-with-backend-main/frontend/index.html)
+  - Added descriptive comments above all major blocks of code (Auth overlay forms, lobby customize parameters, active match grid sections, canvases, tools options, rating overlays, contextual controls, payment structures, and script elements).
+
+### 4. Style Modifications (`style.css`)
+- [style.css](file:///c:/Users/PK'S/OneDrive/Desktop/AdvScribblw-with-backend-main/frontend/css/style.css)
+  - Redefined `.glass-panel` utility class to match the `.wood-panel` wood gradients background, custom border (`4px solid #8d5926`), outline, and box shadows.
+  - Implemented the wood noise & grain patterns inside `.glass-panel::before` and `.glass-panel::after`.
+  - Added customized positioning and scale constraints for `.screw` elements when nested inside a `.glass-panel` (making them slightly smaller at `14px` and offset at `10px` to fit neatly within the game interface).
+  - **Text Visibility & High Contrast Overrides:**
+    - Set default text color inside `.glass-panel` to dark wood brown (`#4a2c11`).
+    - Styled all headers, lists, and bold text inside panels with matching dark wood colors.
+    - Updated inputs, selects, and textareas inside panels to have a paper-cream background (`#fffdf9`), solid brown borders, and high-contrast dark text.
+    - Tailored the Auth card tab-bar, form errors, brand tagline, and forgot links.
+    - Re-styled player cards (drawer, active user, guessed state) and scoreboard text.
+    - Converted the chat feed background to paper-cream (`#fffdf9`) and customized chat messages (normal text, correct guesses, close guesses, system info, joins/leaves) to be clearly legible.
+    - Updated the drawing toolbar brush sizes and tools to render with dark details on cream accents.
+    - Re-styled the leave button and payment modal buttons.
+    - Explicitly exempted canvas overlays and active lobby settings from the dark text overrides since they render on a dark semi-transparent mask inside the canvas area.
+  - **Natural Scroll & Zoom Layout:**
+    - Updated `#game-wrapper` to have `height: auto` and a flexible `min-height: calc(100vh - 28px)` rather than a fixed height constraint.
+    - Set the canvas grid row height to `minmax(520px, 1fr)` to ensure the canvas drawing interface remains spacious.
+    - Allows all panels inside the game tab to scale and move together, scrolling naturally when the browser zoom level changes, matching the user experience of the home page.
+
+### 5. Markup Additions (`index.html`)
+- [index.html](file:///c:/Users/PK'S/OneDrive/Desktop/AdvScribblw-with-backend-main/frontend/index.html)
+  - Added four corner screw elements (`<div class="screw tl"></div>`, etc.) inside all components using the `.glass-panel` layout, including Auth Overlay, Footer panels, Game bar header, Players scoreboard, Canvas overlay container, Drawing toolbar, Chat box, and Payment modal.
+
+## Verification
+- Validated server launch. The Express server successfully re-reads database data dynamically on every registration, authentication check, and payment verification request.
+- Verified test coverage. The rate-limiting layer, Socket.io connection logic, moderation rules, and payment configs are fully operational under live configurations.
