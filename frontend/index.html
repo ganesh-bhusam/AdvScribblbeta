@@ -354,42 +354,78 @@
         <div class="screw tr"></div>
         <div class="screw bl"></div>
         <div class="screw br"></div>
-        <div class="toolbar-row">
-          <!-- Active brush primary/secondary color display block -->
-          <div class="color-preview" id="color-preview" data-testid="color-preview">
-            <div class="primary" id="color-primary"></div>
-            <div class="secondary" id="color-secondary"></div>
-          </div>
-          <!-- Color selection grid palette options -->
-          <div class="colors" id="color-grid" data-tooltip="Click to choose a color" data-testid="color-grid"></div>
-          <!-- Brush size dot thickness pickers selectors -->
-          <div class="sizes" id="size-picker" data-tooltip="Brush size" data-testid="size-picker">
-            <button class="size-btn" data-size="3" data-testid="size-3"><span class="dot s1"></span></button>
-            <button class="size-btn active" data-size="8" data-testid="size-8"><span class="dot s2"></span></button>
-            <button class="size-btn" data-size="16" data-testid="size-16"><span class="dot s3"></span></button>
-            <button class="size-btn" data-size="32" data-testid="size-32"><span class="dot s4"></span></button>
-          </div>
-          <!-- Paint brush/implements selectors group (Pencil, Paint Bucket, Lines, Rectangles, Circles, Eraser) -->
-          <div class="toolbar-group-tools" id="tool-buttons">
-            <button class="tool-btn active" data-tool="pencil" data-testid="tool-pencil" title="Pencil">✏</button>
-            <button class="tool-btn" data-tool="bucket" data-testid="tool-bucket" title="Paint Bucket">🪣</button>
-            <button class="tool-btn" data-tool="line" data-testid="tool-line" title="Line">／</button>
-            <button class="tool-btn" data-tool="rect" data-testid="tool-rect" title="Rectangle">▭</button>
-            <button class="tool-btn" data-tool="circle" data-testid="tool-circle" title="Circle">◯</button>
-            <button class="tool-btn" data-tool="eraser" data-testid="tool-eraser" title="Eraser">⌫</button>
-          </div>
-          <!-- Undo operations and clear drawing action triggers -->
-          <div class="toolbar-group-actions">
-            <button class="tool-btn" id="action-undo" data-testid="action-undo" title="Undo">⟲</button>
-            <button class="tool-btn" id="action-clear" data-testid="action-clear" title="Clear">🗑</button>
+
+        <!-- COLOURS SECTION -->
+        <div class="panel-section">
+          <div class="section-label"><span class="ico">🎨</span> Colours</div>
+          <div class="colours-row">
+            <!-- Active brush primary/secondary color display block -->
+            <div class="color-preview" id="color-preview" data-testid="color-preview">
+              <div class="primary" id="color-primary"></div>
+              <div class="secondary" id="color-secondary"></div>
+            </div>
+            <!-- Color selection grid palette options -->
+            <div class="colors" id="color-grid" data-tooltip="Click to choose a color" data-testid="color-grid"></div>
+            <!-- Custom Premium Color Tools -->
+            <div class="colour-tools" id="premium-color-tools" style="display: none;">
+              <div class="color-wheel" id="color-wheel" title="Pick custom color"></div>
+              <button class="random-btn" id="action-random" data-testid="action-random" type="button" title="Random color">🎲 Random</button>
+            </div>
           </div>
         </div>
+
+        <!-- TOOLS + SIZE SECTION -->
+        <div class="panel-section">
+          <div class="section-label"><span class="ico">🖌</span> Tools</div>
+          <div class="tools-row">
+            <!-- Paint brush/implements selectors group (Pencil, Random Brush, Paint Bucket, Eraser) -->
+            <div class="toolbar-group-tools" id="tool-buttons">
+              <button class="tool-btn active" data-tool="pencil" data-testid="tool-pencil" type="button" title="Brush">✏</button>
+              <button class="tool-btn" id="tool-rainbow" data-tool="rainbow" data-testid="tool-rainbow" type="button" title="Random Brush" style="display: none;">🌈</button>
+              <button class="tool-btn" data-tool="bucket" data-testid="tool-bucket" type="button" title="Paint Bucket">🪣</button>
+              <button class="tool-btn" data-tool="eraser" data-testid="tool-eraser" type="button" title="Eraser">🧹</button>
+            </div>
+
+            <!-- Standard Brush Size buttons -->
+            <div class="sizes" id="size-picker" data-tooltip="Brush size" data-testid="size-picker">
+              <button class="size-btn" data-size="3" data-testid="size-3" type="button"><span class="dot s1"></span></button>
+              <button class="size-btn active" data-size="8" data-testid="size-8" type="button"><span class="dot s2"></span></button>
+              <button class="size-btn" data-size="16" data-testid="size-16" type="button"><span class="dot s3"></span></button>
+              <button class="size-btn" data-size="32" data-testid="size-32" type="button"><span class="dot s4"></span></button>
+            </div>
+
+            <!-- Premium Brush Size Slider -->
+            <div class="size-picker" id="premium-size-slider" data-tooltip="Brush size" style="display: none;">
+              <span class="size-label">Size</span>
+              <button class="size-step" id="size-minus" type="button">–</button>
+              <div class="size-track"><div class="fill" id="size-fill"></div><div class="size-dot" id="size-dot"></div></div>
+              <button class="size-step" id="size-plus" type="button">+</button>
+              <div class="size-swatch" id="size-swatch"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ACTIONS SECTION -->
+        <div class="panel-section">
+          <div class="toolbar-group-actions">
+            <button class="action-btn" id="action-undo" data-testid="action-undo" type="button" title="Undo">⟲</button>
+            <button class="action-btn" id="action-redo" data-testid="action-redo" type="button" style="display: none;" disabled title="Redo">⟳</button>
+            <button class="action-btn danger" id="action-clear" data-testid="action-clear" type="button" title="Clear Canvas">🗑</button>
+          </div>
+        </div>
+
+        <!-- SHAPES SECTION (Premium Only) -->
+        <div class="panel-section" id="premium-shapes" style="display: none;">
+          <div class="section-label"><span class="ico">✦</span> Shapes</div>
+          <div class="shapes-grid" id="shape-buttons"></div>
+        </div>
+
         <!-- Premium palette features activation toggle -->
         <div class="premium-toggle-wrapper" data-testid="premium-toggle-wrapper">
           <span class="toggle-label">
             <span class="prem-icon">★</span> Enable Premium Colors
           </span>
-          <button class="premium-toggle-switch" id="toggle-color-panel" data-testid="premium-toggle-switch" aria-pressed="false" role="switch"></button>
+          <button class="premium-toggle-switch" id="toggle-color-panel" data-testid="premium-toggle-switch" aria-pressed="false" role="switch" type="button"></button>
         </div>
       </section>
 

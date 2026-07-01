@@ -61,6 +61,37 @@
 
   const drawCommands = [];
 
+  // Hidden input element for native color wheel picker
+  const wheelInput = document.createElement('input');
+  wheelInput.type = 'color';
+  wheelInput.style.position = 'absolute';
+  wheelInput.style.opacity = '0';
+  wheelInput.style.width = '0';
+  wheelInput.style.height = '0';
+  document.body.appendChild(wheelInput);
+
+  // Custom premium color selection logic (Wheel & Random) using event delegation
+  document.addEventListener('click', (ev) => {
+    if (ev.target && ev.target.id === 'color-wheel') {
+      ev.preventDefault();
+      wheelInput.click();
+    }
+  });
+
+  wheelInput.addEventListener('input', () => {
+    const hex = wheelInput.value;
+    setColor(hex);
+  });
+
+  document.addEventListener('click', (ev) => {
+    const btn = ev.target && ev.target.closest('#action-random');
+    if (btn) {
+      ev.preventDefault();
+      const hex = '#' + Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0');
+      setColor(hex);
+    }
+  });
+
   // ============================ HELPERS ============================
   function $(id) { return document.getElementById(id); }
   function el(tag, cls, txt) { const e = document.createElement(tag); if (cls) e.className = cls; if (txt !== undefined) e.textContent = txt; return e; }
@@ -76,6 +107,7 @@
   window.toast = toast;
 
   function colorFromIdx(idx) {
+    if (typeof idx === 'string') return idx;
     if (idx < 0 || idx >= ALL_COLORS.length) return '#000000';
     return ALL_COLORS[idx];
   }
@@ -321,10 +353,14 @@
   function onClearCanvas() {
     drawCommands.length = 0;
     clearCanvasLocal();
+    undoneCommands.length = 0;
+    updateRedoButtonState();
   }
   function onUndo(newLen) {
     drawCommands.length = Math.max(0, Math.min(newLen, drawCommands.length));
     redrawAll();
+    undoneCommands.length = 0;
+    updateRedoButtonState();
   }
   function onChat(d) {
     if (mutedPlayerIds.has(d.id)) return;
@@ -359,6 +395,8 @@
 
   // ============================ STATE APPLICATION ============================
   function applyState(s) {
+    undoneCommands.length = 0;
+    updateRedoButtonState();
     const overlay = $('canvas-overlay');
     const overlayContent = $('canvas-overlay-content');
     overlay.classList.remove('active');
@@ -725,6 +763,7 @@
   // ============================ COLOR PALETTE ============================
   function buildPalette(usePremium) {
     const grid = $('color-grid');
+    if (!grid) return;
     grid.innerHTML = '';
     const colors = usePremium ? PREMIUM_COLORS : STANDARD_COLORS;
     const offset = usePremium ? 26 : 0;
@@ -740,6 +779,34 @@
       grid.appendChild(sw);
     });
     refreshColorSelection();
+
+    // Show/hide premium toolbar sections in sync with toggle state
+    const customTools = $('premium-color-tools');
+    if (customTools) customTools.style.display = usePremium ? 'flex' : 'none';
+
+    const premiumShapes = $('premium-shapes');
+    if (premiumShapes) premiumShapes.style.display = usePremium ? 'flex' : 'none';
+
+    const redoBtn = $('action-redo');
+    if (redoBtn) redoBtn.style.display = usePremium ? 'inline-flex' : 'none';
+
+    const standardSize = $('size-picker');
+    const premiumSize = $('premium-size-slider');
+    if (standardSize) standardSize.style.display = usePremium ? 'none' : 'flex';
+    if (premiumSize) {
+      premiumSize.style.display = usePremium ? 'flex' : 'none';
+      if (usePremium) applySizeSlider();
+    }
+
+    const rainbowBtn = $('tool-rainbow');
+    if (rainbowBtn) {
+      rainbowBtn.style.display = usePremium ? 'inline-flex' : 'none';
+    }
+
+    if (!usePremium && tool === 'rainbow') {
+      tool = 'pencil';
+      document.querySelectorAll('#tool-buttons .tool-btn').forEach((x) => x.classList.toggle('active', x.dataset.tool === 'pencil'));
+    }
   }
 
   function setColor(idx, secondary = false) {
@@ -747,11 +814,17 @@
     else colorIndex = idx;
     $('color-primary').style.background = colorFromIdx(colorIndex);
     $('color-secondary').style.background = colorFromIdx(secondaryColorIndex);
+    
+    // Update premium swatch background color
+    const swatch = $('size-swatch');
+    if (swatch) swatch.style.background = colorFromIdx(colorIndex);
+    
     refreshColorSelection();
   }
   function refreshColorSelection() {
     document.querySelectorAll('.color-swatch').forEach((s) => {
-      s.classList.toggle('selected', Number(s.dataset.color) === colorIndex);
+      const colAttr = s.dataset.color;
+      s.classList.toggle('selected', colAttr === String(colorIndex) || colAttr === colorIndex);
     });
   }
 
@@ -776,6 +849,7 @@
   document.querySelectorAll('#tool-buttons .tool-btn').forEach((b) => {
     b.addEventListener('click', () => {
       document.querySelectorAll('#tool-buttons .tool-btn').forEach((x) => x.classList.remove('active'));
+      document.querySelectorAll('.shape-btn').forEach((x) => x.classList.remove('active'));
       b.classList.add('active');
       tool = b.dataset.tool;
     });
@@ -788,13 +862,67 @@
     });
   });
 
+  // Premium Brush Size Slider Implementation
+  const SIZES = [3, 8, 16, 32];
+  let sizeIdx = 1;
+  function applySizeSlider() {
+    brushSize = SIZES[sizeIdx];
+    const fill = $('size-fill');
+    const dot = $('size-dot');
+    const swatch = $('size-swatch');
+    if (fill) fill.style.width = (sizeIdx / (SIZES.length - 1)) * 100 + '%';
+    if (dot) dot.style.left = (sizeIdx / (SIZES.length - 1)) * 100 + '%';
+    if (swatch) {
+      const swPx = 14 + sizeIdx * 10;
+      swatch.style.width = swPx + 'px';
+      swatch.style.height = swPx + 'px';
+      swatch.style.background = colorFromIdx(colorIndex);
+    }
+  }
+
+  document.addEventListener('click', (ev) => {
+    if (ev.target && ev.target.id === 'size-minus') {
+      ev.preventDefault();
+      sizeIdx = Math.max(0, sizeIdx - 1);
+      applySizeSlider();
+    }
+    if (ev.target && ev.target.id === 'size-plus') {
+      ev.preventDefault();
+      sizeIdx = Math.min(SIZES.length - 1, sizeIdx + 1);
+      applySizeSlider();
+    }
+  });
+
+  // Undo / Redo Actions
   $('action-undo').addEventListener('click', () => {
     if (!drawingEnabled) return;
-    const newLen = Math.max(0, drawCommands.length - 1);
-    drawCommands.length = newLen;
-    send(21, newLen);
+    if (drawCommands.length === 0) return;
+    const popped = drawCommands.pop();
+    undoneCommands.push(popped);
+    send(21, drawCommands.length);
     redrawAll();
+    updateRedoButtonState();
   });
+
+  const redoBtn = $('action-redo');
+  if (redoBtn) {
+    redoBtn.addEventListener('click', () => {
+      if (!drawingEnabled) return;
+      if (undoneCommands.length === 0) return;
+      const cmd = undoneCommands.pop();
+      drawCommands.push(cmd);
+      send(19, [cmd]);
+      renderCommand(cmd);
+      updateRedoButtonState();
+    });
+  }
+
+  function updateRedoButtonState() {
+    const btn = $('action-redo');
+    if (btn) {
+      btn.disabled = undoneCommands.length === 0;
+    }
+  }
   $('action-clear').addEventListener('click', () => {
     if (!drawingEnabled) return;
     drawCommands.length = 0;
@@ -806,6 +934,39 @@
   let drawing = false;
   let strokeStart = null;
   let lastPoint = null;
+
+  const SHAPE_MAP = {
+    'line': 2,
+    'rect': 3,
+    'circle': 4,
+    'curve': 5,
+    'rrect': 6,
+    'parallel': 7,
+    'triangle': 8,
+    'rtriangle': 9,
+    'diamond': 10,
+    'pentagon': 11,
+    'hexagon': 12,
+    'arrow-r': 13,
+    'arrow-l': 14,
+    'arrow-u': 15,
+    'arrow-d': 16,
+    'sparkle': 17,
+    'star': 18,
+    'burst': 19,
+    'bubble': 20,
+    'bubble2': 21,
+    'cloud': 22,
+    'heart': 23,
+    'lightning': 24
+  };
+
+  let currentShapeType = 'line';
+  const undoneCommands = [];
+
+  function randomHexColor() {
+    return '#' + Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0');
+  }
 
   function canvasCoord(e) {
     const r = canvas.getBoundingClientRect();
@@ -819,58 +980,216 @@
     const p = canvasCoord(e);
     drawing = true;
     strokeStart = p; lastPoint = p;
+    undoneCommands.length = 0;
+    updateRedoButtonState();
+
     if (tool === 'bucket') {
       const cmd = [1, colorIndex, brushSize, p.x, p.y, p.x, p.y];
       drawCommands.push(cmd); renderCommand(cmd); send(19, [cmd]);
       drawing = false;
-    } else if (tool === 'pencil' || tool === 'eraser') {
-      const usedColor = tool === 'eraser' ? secondaryColorIndex : colorIndex;
+    } else if (tool === 'pencil' || tool === 'eraser' || tool === 'rainbow') {
+      const usedColor = tool === 'eraser' ? secondaryColorIndex : (tool === 'rainbow' ? randomHexColor() : colorIndex);
       const cmd = [0, usedColor, brushSize, p.x, p.y, p.x, p.y];
       drawCommands.push(cmd); renderCommand(cmd); send(19, [cmd]);
     }
   });
+
   canvas.addEventListener('mousemove', (e) => {
     if (!drawingEnabled) return;
     const p = canvasCoord(e);
     if (!drawing) return;
-    if (tool === 'pencil' || tool === 'eraser') {
-      const usedColor = tool === 'eraser' ? secondaryColorIndex : colorIndex;
+    if (tool === 'pencil' || tool === 'eraser' || tool === 'rainbow') {
+      const usedColor = tool === 'eraser' ? secondaryColorIndex : (tool === 'rainbow' ? randomHexColor() : colorIndex);
       const cmd = [0, usedColor, brushSize, lastPoint.x, lastPoint.y, p.x, p.y];
       drawCommands.push(cmd); renderCommand(cmd); send(19, [cmd]);
       lastPoint = p;
-    } else if (tool === 'line' || tool === 'rect' || tool === 'circle') {
+    } else if (tool === 'line' || tool === 'rect' || tool === 'circle' || tool === 'shape') {
       redrawAll();
-      drawShapePreview(strokeStart, p, tool, colorIndex, brushSize);
+      drawShapePreview(strokeStart, p, tool === 'shape' ? currentShapeType : tool, colorIndex, brushSize);
     }
   });
+
   function endDraw(e) {
     if (!drawingEnabled || !drawing) return;
     const p = e && e.clientX !== undefined ? canvasCoord(e) : lastPoint;
-    if (tool === 'line') {
-      const cmd = [2, colorIndex, brushSize, strokeStart.x, strokeStart.y, p.x, p.y];
-      drawCommands.push(cmd); renderCommand(cmd); send(19, [cmd]);
-    } else if (tool === 'rect') {
-      const cmd = [3, colorIndex, brushSize, strokeStart.x, strokeStart.y, p.x, p.y];
-      drawCommands.push(cmd); renderCommand(cmd); send(19, [cmd]);
-    } else if (tool === 'circle') {
-      const cmd = [4, colorIndex, brushSize, strokeStart.x, strokeStart.y, p.x, p.y];
+    
+    if (tool === 'line' || tool === 'rect' || tool === 'circle' || tool === 'shape') {
+      const shapeType = tool === 'shape' ? currentShapeType : tool;
+      const typeCode = SHAPE_MAP[shapeType] || 2;
+      const cmd = [typeCode, colorIndex, brushSize, strokeStart.x, strokeStart.y, p.x, p.y];
       drawCommands.push(cmd); renderCommand(cmd); send(19, [cmd]);
     }
     drawing = false; strokeStart = null; lastPoint = null;
   }
+
   canvas.addEventListener('mouseup', endDraw);
   canvas.addEventListener('mouseleave', endDraw);
   canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 
   canvas.addEventListener('touchstart', (e) => { if (!drawingEnabled) return; e.preventDefault(); const t = e.touches[0]; canvas.dispatchEvent(new MouseEvent('mousedown', { clientX: t.clientX, clientY: t.clientY })); }, { passive: false });
   canvas.addEventListener('touchmove',  (e) => { if (!drawingEnabled) return; e.preventDefault(); const t = e.touches[0]; canvas.dispatchEvent(new MouseEvent('mousemove', { clientX: t.clientX, clientY: t.clientY })); }, { passive: false });
-  // [FIX M5] touchend: dispatch mouseup with the LAST known touch position, not (0,0)
   canvas.addEventListener('touchend', (e) => {
     if (!drawingEnabled) return;
     e.preventDefault();
-    const t = e.changedTouches[0]; // changedTouches has the lifted finger coords
+    const t = e.changedTouches[0];
     canvas.dispatchEvent(new MouseEvent('mouseup', { clientX: t.clientX, clientY: t.clientY }));
   }, { passive: false });
+
+  function drawShapePath(type, x1, y1, x2, y2) {
+    const w = x2 - x1;
+    const h = y2 - y1;
+    const cx = (x1 + x2) / 2;
+    const cy = (y1 + y2) / 2;
+
+    ctx.beginPath();
+    
+    if (type === 2 || type === 'line') {
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x2, y2);
+    } else if (type === 3 || type === 'rect') {
+      ctx.rect(Math.min(x1, x2), Math.min(y1, y2), Math.abs(w), Math.abs(h));
+    } else if (type === 4 || type === 'circle') {
+      const rx = Math.abs(w) / 2;
+      const ry = Math.abs(h) / 2;
+      ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+    } else if (type === 5 || type === 'curve') {
+      ctx.moveTo(x1, y2);
+      ctx.quadraticCurveTo(cx, y1, x2, y2);
+    } else if (type === 6 || type === 'rrect') {
+      const r = Math.min(Math.abs(w), Math.abs(h)) * 0.15;
+      ctx.roundRect(Math.min(x1, x2), Math.min(y1, y2), Math.abs(w), Math.abs(h), r);
+    } else if (type === 7 || type === 'parallel') {
+      const offset = w * 0.2;
+      ctx.moveTo(x1 + offset, y1);
+      ctx.lineTo(x2, y1);
+      ctx.lineTo(x2 - offset, y2);
+      ctx.lineTo(x1, y2);
+      ctx.closePath();
+    } else if (type === 8 || type === 'triangle') {
+      ctx.moveTo(cx, y1);
+      ctx.lineTo(x2, y2);
+      ctx.lineTo(x1, y2);
+      ctx.closePath();
+    } else if (type === 9 || type === 'rtriangle') {
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x1, y2);
+      ctx.lineTo(x2, y2);
+      ctx.closePath();
+    } else if (type === 10 || type === 'diamond') {
+      ctx.moveTo(cx, y1);
+      ctx.lineTo(x2, cy);
+      ctx.lineTo(cx, y2);
+      ctx.lineTo(x1, cy);
+      ctx.closePath();
+    } else if (type === 11 || type === 'pentagon') {
+      ctx.moveTo(cx, y1);
+      ctx.lineTo(x1 + w * 0.95, y1 + h * 0.38);
+      ctx.lineTo(x1 + w * 0.78, y2);
+      ctx.lineTo(x1 + w * 0.22, y2);
+      ctx.lineTo(x1 + w * 0.05, y1 + h * 0.38);
+      ctx.closePath();
+    } else if (type === 12 || type === 'hexagon') {
+      ctx.moveTo(x1 + w * 0.25, y1);
+      ctx.lineTo(x1 + w * 0.75, y1);
+      ctx.lineTo(x2, cy);
+      ctx.lineTo(x1 + w * 0.75, y2);
+      ctx.lineTo(x1 + w * 0.25, y2);
+      ctx.lineTo(x1, cy);
+      ctx.closePath();
+    } else if (type === 13 || type === 'arrow-r') {
+      ctx.moveTo(x1, cy);
+      ctx.lineTo(x2, cy);
+      ctx.moveTo(x2, cy);
+      ctx.lineTo(x2 - w * 0.25, y1);
+      ctx.moveTo(x2, cy);
+      ctx.lineTo(x2 - w * 0.25, y2);
+    } else if (type === 14 || type === 'arrow-l') {
+      ctx.moveTo(x2, cy);
+      ctx.lineTo(x1, cy);
+      ctx.moveTo(x1, cy);
+      ctx.lineTo(x1 + w * 0.25, y1);
+      ctx.moveTo(x1, cy);
+      ctx.lineTo(x1 + w * 0.25, y2);
+    } else if (type === 15 || type === 'arrow-u') {
+      ctx.moveTo(cx, y2);
+      ctx.lineTo(cx, y1);
+      ctx.moveTo(cx, y1);
+      ctx.lineTo(x1, y1 + h * 0.25);
+      ctx.moveTo(cx, y1);
+      ctx.lineTo(x2, y1 + h * 0.25);
+    } else if (type === 16 || type === 'arrow-d') {
+      ctx.moveTo(cx, y1);
+      ctx.lineTo(cx, y2);
+      ctx.moveTo(cx, y2);
+      ctx.lineTo(x1, y2 - h * 0.25);
+      ctx.moveTo(cx, y2);
+      ctx.lineTo(x2, y2 - h * 0.25);
+    } else if (type === 17 || type === 'sparkle') {
+      ctx.moveTo(cx, y1);
+      ctx.quadraticCurveTo(cx, cy, x2, cy);
+      ctx.quadraticCurveTo(cx, cy, cx, y2);
+      ctx.quadraticCurveTo(cx, cy, x1, cy);
+      ctx.quadraticCurveTo(cx, cy, cx, y1);
+    } else if (type === 18 || type === 'star') {
+      const R = Math.max(Math.abs(w), Math.abs(h)) / 2;
+      const r = R * 0.4;
+      for (let i = 0; i < 10; i++) {
+        const angle = (i * Math.PI) / 5 - Math.PI / 2;
+        const radius = i % 2 === 0 ? R : r;
+        const sx = cx + radius * Math.cos(angle);
+        const sy = cy + radius * Math.sin(angle);
+        if (i === 0) ctx.moveTo(sx, sy);
+        else ctx.lineTo(sx, sy);
+      }
+      ctx.closePath();
+    } else if (type === 19 || type === 'burst') {
+      const R = Math.max(Math.abs(w), Math.abs(h)) / 2;
+      const r = R * 0.65;
+      for (let i = 0; i < 16; i++) {
+        const angle = (i * Math.PI) / 8;
+        const radius = i % 2 === 0 ? R : r;
+        const sx = cx + radius * Math.cos(angle);
+        const sy = cy + radius * Math.sin(angle);
+        if (i === 0) ctx.moveTo(sx, sy);
+        else ctx.lineTo(sx, sy);
+      }
+      ctx.closePath();
+    } else if (type === 20 || type === 'bubble') {
+      ctx.moveTo(x1 + w * 0.1, y1);
+      ctx.lineTo(x1 + w * 0.9, y1);
+      ctx.quadraticCurveTo(x2, y1, x2, y1 + h * 0.4);
+      ctx.quadraticCurveTo(x2, y1 + h * 0.8, x1 + w * 0.9, y1 + h * 0.8);
+      ctx.lineTo(x1 + w * 0.5, y1 + h * 0.8);
+      ctx.lineTo(x1 + w * 0.3, y2);
+      ctx.lineTo(x1 + w * 0.4, y1 + h * 0.8);
+      ctx.lineTo(x1 + w * 0.1, y1 + h * 0.8);
+      ctx.quadraticCurveTo(x1, y1 + h * 0.8, x1, y1 + h * 0.4);
+      ctx.quadraticCurveTo(x1, y1, x1 + w * 0.1, y1);
+    } else if (type === 21 || type === 'bubble2') {
+      ctx.ellipse(cx, y1 + h * 0.45, Math.abs(w) * 0.45, Math.abs(h) * 0.35, 0, 0, Math.PI * 2);
+      ctx.moveTo(x1 + w * 0.35, y1 + h * 0.8);
+      ctx.lineTo(x1 + w * 0.2, y2);
+      ctx.lineTo(x1 + w * 0.5, y1 + h * 0.77);
+    } else if (type === 22 || type === 'cloud') {
+      ctx.arc(cx - w * 0.2, cy, Math.abs(w) * 0.25, Math.PI, Math.PI * 1.8);
+      ctx.arc(cx + w * 0.15, cy - h * 0.15, Math.abs(w) * 0.3, Math.PI * 1.3, Math.PI * 2.2);
+      ctx.arc(cx + w * 0.25, cy + h * 0.05, Math.abs(w) * 0.2, Math.PI * 1.8, Math.PI * 0.3);
+      ctx.lineTo(x1, cy + h * 0.25);
+      ctx.closePath();
+    } else if (type === 23 || type === 'heart') {
+      ctx.moveTo(cx, y1 + h * 0.3);
+      ctx.bezierCurveTo(x1, y1, x1, cy, cx, y2);
+      ctx.bezierCurveTo(x2, cy, x2, y1, cx, y1 + h * 0.3);
+    } else if (type === 24 || type === 'lightning') {
+      ctx.moveTo(cx + w * 0.1, y1);
+      ctx.lineTo(x1, cy + h * 0.1);
+      ctx.lineTo(cx + w * 0.1, cy + h * 0.1);
+      ctx.lineTo(cx - w * 0.1, y2);
+      ctx.lineTo(x2, cy - h * 0.1);
+      ctx.lineTo(cx - w * 0.1, cy - h * 0.1);
+      ctx.closePath();
+    }
+  }
 
   function renderCommand(c) {
     const [type, colIdx, size, x1, y1, x2, y2] = c;
@@ -883,27 +1202,17 @@
       if (x1 === x2 && y1 === y2) { ctx.beginPath(); ctx.arc(x1, y1, size / 2, 0, Math.PI * 2); ctx.fill(); }
     } else if (type === 1) {
       floodFill(x1, y1, color);
-    } else if (type === 2) {
-      ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
-    } else if (type === 3) {
-      ctx.strokeRect(Math.min(x1, x2), Math.min(y1, y2), Math.abs(x2 - x1), Math.abs(y2 - y1));
-    } else if (type === 4) {
-      const cx = (x1 + x2) / 2, cy = (y1 + y2) / 2;
-      const rx = Math.abs(x2 - x1) / 2, ry = Math.abs(y2 - y1) / 2;
-      ctx.beginPath(); ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2); ctx.stroke();
+    } else {
+      drawShapePath(type, x1, y1, x2, y2);
+      ctx.stroke();
     }
   }
 
   function drawShapePreview(p1, p2, t, colIdx, size) {
     const color = colorFromIdx(colIdx);
     ctx.lineWidth = size; ctx.strokeStyle = color;
-    if (t === 'line') { ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.stroke(); }
-    else if (t === 'rect') { ctx.strokeRect(Math.min(p1.x, p2.x), Math.min(p1.y, p2.y), Math.abs(p2.x - p1.x), Math.abs(p2.y - p1.y)); }
-    else if (t === 'circle') {
-      const cx = (p1.x + p2.x) / 2, cy = (p1.y + p2.y) / 2;
-      const rx = Math.abs(p2.x - p1.x) / 2, ry = Math.abs(p2.y - p1.y) / 2;
-      ctx.beginPath(); ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2); ctx.stroke();
-    }
+    drawShapePath(t, p1.x, p1.y, p2.x, p2.y);
+    ctx.stroke();
   }
 
   function clearCanvasLocal() {
@@ -1031,10 +1340,60 @@
 
   $('logout-btn').addEventListener('click', () => window.Auth.logout());
 
+  // ============================ SHAPES GRID GENERATION ============================
+  const SHAPES = [
+    { id:'line',      svg:'<line x1="4" y1="20" x2="20" y2="4"/>' },
+    { id:'curve',     svg:'<path d="M4 16 Q9 4 12 12 T20 8"/>' },
+    { id:'circle',    svg:'<circle cx="12" cy="12" r="8"/>' },
+    { id:'rect',      svg:'<rect x="4" y="6" width="16" height="12"/>' },
+    { id:'rrect',     svg:'<rect x="4" y="6" width="16" height="12" rx="4"/>' },
+    { id:'parallel',  svg:'<path d="M7 20 L11 4 L21 4 L17 20 Z"/>' },
+    { id:'triangle',  svg:'<path d="M12 4 L20 20 L4 20 Z"/>' },
+    { id:'rtriangle', svg:'<path d="M5 4 L5 20 L20 20 Z"/>' },
+    { id:'diamond',   svg:'<path d="M12 3 L21 12 L12 21 L3 12 Z"/>' },
+    { id:'pentagon',  svg:'<path d="M12 3 L21 10 L18 20 L6 20 L3 10 Z"/>' },
+    { id:'hexagon',   svg:'<path d="M7 4 L17 4 L21 12 L17 20 L7 20 L3 12 Z"/>' },
+    { id:'arrow-r',   svg:'<path d="M4 12 H18 M13 6 L19 12 L13 18"/>' },
+    { id:'arrow-l',   svg:'<path d="M20 12 H6 M11 6 L5 12 L11 18"/>' },
+    { id:'arrow-u',   svg:'<path d="M12 20 V6 M6 11 L12 5 L18 11"/>' },
+    { id:'arrow-d',   svg:'<path d="M12 4 V18 M6 13 L12 19 L18 13"/>' },
+    { id:'sparkle',   svg:'<path d="M12 2 L14 10 L22 12 L14 14 L12 22 L10 14 L2 12 L10 10 Z"/>' },
+    { id:'star',      svg:'<path d="M12 2 L14.6 9 L22 9.5 L16.2 14.2 L18 21.5 L12 17.5 L6 21.5 L7.8 14.2 L2 9.5 L9.4 9 Z"/>' },
+    { id:'burst',     svg:'<path d="M12 2 L14 8 L20 6 L16 11 L22 12 L16 13 L20 18 L14 16 L12 22 L10 16 L4 18 L8 13 L2 12 L8 11 L4 6 L10 8 Z"/>' },
+    { id:'bubble',    svg:'<path d="M4 5 H20 V16 H10 L6 20 V16 H4 Z"/>' },
+    { id:'bubble2',   svg:'<ellipse cx="12" cy="11" rx="9" ry="7"/><path d="M8 17 L5 21 L11 18"/>' },
+    { id:'cloud',     svg:'<path d="M7 17a4 4 0 0 1 0-8 5 5 0 0 1 9.6-1.5A4.5 4.5 0 0 1 17 17Z"/>' },
+    { id:'heart',     svg:'<path d="M12 20 C4 14 2 9 6 6 C9 4 12 6 12 9 C12 6 15 4 18 6 C22 9 20 14 12 20 Z"/>' },
+    { id:'lightning', svg:'<path d="M13 2 L4 14 H11 L9 22 L20 9 H13 Z"/>' }
+  ];
+
+  function buildShapesGrid() {
+    const grid = $('shape-buttons');
+    if (!grid) return;
+    grid.innerHTML = '';
+    SHAPES.forEach(s => {
+      const b = el('button', 'shape-btn');
+      b.type = 'button';
+      b.dataset.shape = s.id;
+      b.title = s.id;
+      b.innerHTML = `<svg viewBox="0 0 24 24" style="stroke: currentColor; fill: none; stroke-width: 1.8; width: 60%; height: 60%;">${s.svg}</svg>`;
+      b.addEventListener('click', (ev) => {
+        ev.preventDefault();
+        document.querySelectorAll('.shape-btn').forEach(x => x.classList.remove('active'));
+        document.querySelectorAll('#tool-buttons .tool-btn').forEach(x => x.classList.remove('active'));
+        b.classList.add('active');
+        tool = 'shape';
+        currentShapeType = s.id;
+      });
+      grid.appendChild(b);
+    });
+  }
+
   // ============================ BOOTSTRAP ============================
   document.addEventListener('auth:ready', async () => {
     updateHomeUI();
     await loadLanguages();
+    buildShapesGrid();
     buildPalette(false);
     setColor(11); setColor(0, true);
     setAvatar(Math.floor(Math.random() * HEAD_COLORS.length));
