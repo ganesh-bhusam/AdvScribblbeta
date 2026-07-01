@@ -1002,8 +1002,14 @@ select option {
    GAME
    ========================================================= */
 #game {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  padding: 28px 32px 56px;
   min-height: 100vh;
-  padding: 14px;
+  max-width: 1600px;
+  margin: 0 auto;
+  box-sizing: border-box;
 }
 
 #game-wrapper {
@@ -1013,12 +1019,13 @@ select option {
     "players canvas    chat"
     "players toolbar   chat";
   grid-template-columns: minmax(220px, 260px) minmax(0, 1fr) minmax(280px, 340px);
-  grid-template-rows: auto minmax(520px, 1fr) auto;
+  grid-template-rows: auto 600px auto;
   gap: 14px;
-  max-width: 1700px;
+  max-width: 1400px;
   margin: 0 auto;
-  min-height: calc(100vh - 28px);
+  width: 100%;
   height: auto;
+  box-sizing: border-box;
 }
 
 #game-bar {
