@@ -1619,7 +1619,7 @@ select option {
   gap: 10px;
 }
 
-.panel-section + .panel-section {
+.panel-section+.panel-section {
   padding-top: 14px;
   border-top: 2px solid #8d5926;
 }
@@ -1639,7 +1639,8 @@ select option {
   font-size: 0.95rem;
 }
 
-.colours-row, .tools-row {
+.colours-row,
+.tools-row {
   display: flex;
   align-items: center;
   gap: 18px;
@@ -1724,7 +1725,7 @@ select option {
   padding: 8px 14px;
   border-radius: 12px;
   cursor: pointer;
-  box-shadow: inset 0 2px rgba(255, 255, 255, .45), inset 0 -4px rgba(0, 0, 0, .14), 0 4px 8px rgba(0,0,0,0.15);
+  box-shadow: inset 0 2px rgba(255, 255, 255, .45), inset 0 -4px rgba(0, 0, 0, .14), 0 4px 8px rgba(0, 0, 0, 0.15);
   transition: transform 0.15s var(--tx);
   white-space: nowrap;
 }
@@ -1732,12 +1733,12 @@ select option {
 .random-btn:hover {
   transform: translateY(-2px);
   background: linear-gradient(180deg, #fce6be, #f4c88e);
-  box-shadow: inset 0 2px rgba(255, 255, 255, .45), inset 0 -4px rgba(0, 0, 0, .14), 0 6px 12px rgba(0,0,0,0.2);
+  box-shadow: inset 0 2px rgba(255, 255, 255, .45), inset 0 -4px rgba(0, 0, 0, .14), 0 6px 12px rgba(0, 0, 0, 0.2);
 }
 
 .random-btn:active {
   transform: translateY(1px);
-  box-shadow: inset 0 1px rgba(255, 255, 255, .25), inset 0 -2px rgba(0, 0, 0, .1), 0 2px 4px rgba(0,0,0,0.1);
+  box-shadow: inset 0 1px rgba(255, 255, 255, .25), inset 0 -2px rgba(0, 0, 0, .1), 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .colors {
@@ -1962,9 +1963,17 @@ select option {
 }
 
 @keyframes rainbow-shift {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
+  0% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
+
+  100% {
+    background-position: 0% 50%;
+  }
 }
 
 .action-btn {
@@ -3149,4 +3158,154 @@ select option {
 
 .glass-panel .overlay-content .reveal .word {
   color: var(--accent-gold);
+}
+
+/* --- USER REQUESTED LAYOUT OVERRIDES --- */
+.center-panel {
+  padding: 28px 34px 32px !important;
+}
+
+.screw.tl {
+  top: 16px !important;
+  left: 16px !important;
+}
+
+.screw.tr {
+  top: 16px !important;
+  right: 16px !important;
+}
+
+.screw.bl {
+  bottom: 16px !important;
+  left: 16px !important;
+}
+
+.screw.br {
+  bottom: 16px !important;
+  right: 16px !important;
+}
+
+.top-row {
+  height: 140px;
+}
+
+.avatar-section.avatar-customizer {
+  width: 160px;
+  position: relative;
+  justify-content: center;
+}
+
+.avatar-section .avatar-arrow {
+  position: absolute;
+  width: 40px !important;
+  height: 40px !important;
+  z-index: 10;
+}
+
+.avatar-section .avatar-arrow[data-avatar-dir="-1"] {
+  left: 0;
+}
+
+.avatar-section .avatar-arrow[data-avatar-dir="1"] {
+  right: 0;
+}
+
+.avatar-frame {
+  width: 160px !important;
+  height: 160px !important;
+  margin: 0 !important;
+  transform: none !important;
+}
+
+#avatar-big-head.char-head.big {
+  width: 100px !important;
+  height: 115px !important;
+}
+
+#avatar-big-head.char-head.big::before {
+  left: 0 !important;
+  top: 0 !important;
+  width: 100px !important;
+  height: 100px !important;
+  border-width: 4px !important;
+}
+
+#avatar-big-head.char-head.big::after {
+  display: none !important;
+}
+
+#avatar-big-head.char-head.big .face {
+  left: 25px !important;
+  top: 35px !important;
+  width: 50px !important;
+  height: 30px !important;
+  background-image:
+    radial-gradient(circle 2px at 12px 10px, #fff 0 2px, transparent 3px),
+    radial-gradient(circle 2px at 38px 10px, #fff 0 2px, transparent 3px),
+    radial-gradient(circle 5px at 14px 12px, #111 0 5px, transparent 6px),
+    radial-gradient(circle 5px at 40px 12px, #111 0 5px, transparent 6px),
+    radial-gradient(ellipse 8px 3px at 27px 24px, #111 0 3px, transparent 4px) !important;
+}
+
+/* Force the input to match the select */
+
+.name-lang-column .input-name,
+.name-lang-column .wood-input,
+.name-lang-column input,
+.name-lang-column .wood-select,
+.name-lang-column select {
+  width: 100% !important;
+  min-width: 100% !important;
+  max-width: 100% !important;
+
+  height: 65px !important;
+  min-height: 65px !important;
+  max-height: 65px !important;
+
+  padding: 0 18px !important;
+  font-size: 18px !important;
+  box-sizing: border-box !important;
+}
+
+.name-lang-column input {
+  color: #2d1504;
+}
+
+
+.cta-row {
+  height: 60px;
+}
+
+.cta-row .play-btn,
+.cta-row .room-btn {
+  margin-top: -50px;
+
+}
+
+.cta-row .play-btn,
+.cta-row .room-btn {
+  height: 60px !important;
+}
+
+.join-row {
+  height: 54px;
+}
+
+.join-row .join-input,
+.join-row .join-btn {
+  margin-top: -115px;
+
+}
+
+
+
+
+.join-row .join-input,
+.join-row .join-btn {
+  height: 54px !important;
+}
+
+.join-row .join-btn {
+  width: 100px !important;
+  flex: none;
 }

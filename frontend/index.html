@@ -1,28 +1,32 @@
 <!DOCTYPE html>
 <html lang="en" data-theme="dark">
+
 <head>
   <!-- Basic page configurations and character encoding -->
   <meta charset="utf-8">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  
+
   <!-- Site title and SEO description metadata -->
   <title>AdvScribbl — Multiplayer Drawing &amp; Guessing Game</title>
-  <meta name="description" content="AdvScribbl — premium multiplayer drawing &amp; guessing game with glassmorphism UI, MS Paint tools, Romanized Indian languages and a custom premium color palette.">
-  
+  <meta name="description"
+    content="AdvScribbl — premium multiplayer drawing &amp; guessing game with glassmorphism UI, MS Paint tools, Romanized Indian languages and a custom premium color palette.">
+
   <!-- Favicon and fonts preconnections -->
   <link rel="icon" href="/img/legacy-panel.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  
+
   <!-- Import custom premium fonts (Outfit, Caveat, Patrick Hand) and stylesheet -->
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Caveat:wght@400;600;700&family=Patrick+Hand&display=swap" rel="stylesheet">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Caveat:wght@400;600;700&family=Patrick+Hand&display=swap"
+    rel="stylesheet">
   <link rel="stylesheet" href="/css/style.css">
-  
+
   <!-- SDKs and client-side dependencies -->
   <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
   <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
-  
+
   <!-- Local environment configurations -->
   <script>
     window.ENV = { API: 'http://localhost:8001' };
@@ -42,11 +46,14 @@
       <div class="screw tr"></div>
       <div class="screw bl"></div>
       <div class="screw br"></div>
-      
+
       <!-- Brand Logo / Header block -->
       <div class="auth-brand">
         <h1 class="brand-title rainbow-logo" data-testid="auth-brand-logo">
-          <span style="color:#FF1F1F">A</span><span style="color:#FF7A00">d</span><span style="color:#FFD200">v</span><span style="color:#1FBF3B">S</span><span style="color:#00B7E0">c</span><span style="color:#1F4FE0">r</span><span style="color:#7A2CE0">i</span><span style="color:#C71FA8">b</span><span style="color:#E0257A">b</span><span style="color:#E0451F">l</span>
+          <span style="color:#FF1F1F">A</span><span style="color:#FF7A00">d</span><span
+            style="color:#FFD200">v</span><span style="color:#1FBF3B">S</span><span style="color:#00B7E0">c</span><span
+            style="color:#1F4FE0">r</span><span style="color:#7A2CE0">i</span><span style="color:#C71FA8">b</span><span
+            style="color:#E0257A">b</span><span style="color:#E0451F">l</span>
         </h1>
         <p class="brand-tag">draw. guess. dominate.</p>
       </div>
@@ -61,16 +68,19 @@
       <form id="login-form" class="auth-form active" autocomplete="off" data-testid="login-form">
         <label class="field">
           <span class="field-label">Username</span>
-          <input type="text" id="login-username" placeholder="picasso_99" required minlength="3" maxlength="21" data-testid="login-username-input">
+          <input type="text" id="login-username" placeholder="picasso_99" required minlength="3" maxlength="21"
+            data-testid="login-username-input">
         </label>
         <label class="field">
           <span class="field-label">Password</span>
-          <input type="password" id="login-password" placeholder="••••••••" required minlength="6" data-testid="login-password-input">
+          <input type="password" id="login-password" placeholder="••••••••" required minlength="6"
+            data-testid="login-password-input">
         </label>
         <!-- Container for login failure validation errors -->
         <div class="auth-error" id="login-error" data-testid="login-error"></div>
         <button type="submit" class="btn btn-primary" data-testid="login-submit-button">Enter Game →</button>
-        <button type="button" class="auth-link" id="forgot-link" data-testid="forgot-password-link">Forgot password? Need help?</button>
+        <button type="button" class="auth-link" id="forgot-link" data-testid="forgot-password-link">Forgot password?
+          Need help?</button>
       </form>
 
       <!-- Form block: Sign Up / Register new credentials -->
@@ -78,11 +88,13 @@
         <div class="row-2">
           <label class="field">
             <span class="field-label">Full Name</span>
-            <input type="text" id="signup-name" placeholder="Alex Morgan" required minlength="2" maxlength="40" data-testid="signup-name-input">
+            <input type="text" id="signup-name" placeholder="Alex Morgan" required minlength="2" maxlength="40"
+              data-testid="signup-name-input">
           </label>
           <label class="field">
             <span class="field-label">Username</span>
-            <input type="text" id="signup-username" placeholder="picasso_99" required minlength="3" maxlength="21" data-testid="signup-username-input">
+            <input type="text" id="signup-username" placeholder="picasso_99" required minlength="3" maxlength="21"
+              data-testid="signup-username-input">
           </label>
         </div>
         <label class="field">
@@ -91,7 +103,8 @@
         </label>
         <label class="field">
           <span class="field-label">Password</span>
-          <input type="password" id="signup-password" placeholder="6+ characters" required minlength="6" data-testid="signup-password-input">
+          <input type="password" id="signup-password" placeholder="6+ characters" required minlength="6"
+            data-testid="signup-password-input">
         </label>
         <!-- Container for sign up validation errors -->
         <div class="auth-error" id="signup-error" data-testid="signup-error"></div>
@@ -105,27 +118,47 @@
     <!-- Home screen top header: Title and session actions -->
     <header class="home-header">
       <h1 class="logo-text rainbow-logo" data-testid="home-logo">
-        <span style="color:#FF1F1F">A</span><span style="color:#FF7A00">d</span><span style="color:#FFD200">v</span><span style="color:#1FBF3B">S</span><span style="color:#00B7E0">c</span><span style="color:#1F4FE0">r</span><span style="color:#7A2CE0">i</span><span style="color:#C71FA8">b</span><span style="color:#E0257A">b</span><span style="color:#E0451F">l</span>
+        <span style="color:#FF1F1F">A</span><span style="color:#FF7A00">d</span><span
+          style="color:#FFD200">v</span><span style="color:#1FBF3B">S</span><span style="color:#00B7E0">c</span><span
+          style="color:#1F4FE0">r</span><span style="color:#7A2CE0">i</span><span style="color:#C71FA8">b</span><span
+          style="color:#E0257A">b</span><span style="color:#E0451F">l</span>
       </h1>
       <div class="header-actions">
         <span class="welcome-text" id="welcome-text" data-testid="welcome-text"></span>
         <button class="btn btn-ghost" id="button-unlock-premium" data-testid="home-premium-button">
           <span class="prem-icon">★</span> Unlock Premium
         </button>
-        <button class="btn btn-ghost icon-btn" id="logout-btn" title="Log out" data-testid="logout-button" aria-label="Log out">⎋</button>
+        <button class="btn btn-ghost icon-btn" id="logout-btn" title="Log out" data-testid="logout-button"
+          aria-label="Log out">⎋</button>
       </div>
     </header>
 
     <!-- 8 colored character heads strip (inspired by skribbl.io aesthetics) -->
     <div class="character-strip" data-testid="character-strip" aria-hidden="true">
-      <div class="char-head" data-color="red"><div class="face"></div></div>
-      <div class="char-head" data-color="orange"><div class="face"></div></div>
-      <div class="char-head" data-color="yellow"><div class="face"></div></div>
-      <div class="char-head crown" data-color="green"><div class="face"></div></div>
-      <div class="char-head" data-color="cyan"><div class="face"></div></div>
-      <div class="char-head" data-color="blue"><div class="face"></div></div>
-      <div class="char-head" data-color="purple"><div class="face"></div></div>
-      <div class="char-head" data-color="pink"><div class="face"></div></div>
+      <div class="char-head" data-color="red">
+        <div class="face"></div>
+      </div>
+      <div class="char-head" data-color="orange">
+        <div class="face"></div>
+      </div>
+      <div class="char-head" data-color="yellow">
+        <div class="face"></div>
+      </div>
+      <div class="char-head crown" data-color="green">
+        <div class="face"></div>
+      </div>
+      <div class="char-head" data-color="cyan">
+        <div class="face"></div>
+      </div>
+      <div class="char-head" data-color="blue">
+        <div class="face"></div>
+      </div>
+      <div class="char-head" data-color="purple">
+        <div class="face"></div>
+      </div>
+      <div class="char-head" data-color="pink">
+        <div class="face"></div>
+      </div>
     </div>
 
     <!-- Main lobby parameters panel layout (customizer, select language, play triggers) -->
@@ -138,42 +171,51 @@
         <div class="screw br"></div>
         <div class="knot one"></div>
         <div class="knot two"></div>
-        
+
         <div class="panel-inner" style="display:flex; flex-direction:column; gap:12px;">
           <!-- Top row containing profile customize arrows, preview frame, and identity values -->
           <div class="top-row" style="display:flex; gap:16px; align-items:center;">
             <!-- Avatar frame customizer selectors -->
-            <div class="avatar-section avatar-customizer" data-testid="avatar-customizer" style="background:transparent; border:none; padding:0; flex-shrink:0;">
-              <button class="circle-btn avatar-arrow" data-avatar-dir="-1" aria-label="Previous color" data-testid="avatar-prev">‹</button>
+            <div class="avatar-section avatar-customizer" data-testid="avatar-customizer"
+              style="background:transparent; border:none; padding:0; flex-shrink:0;">
+              <button class="circle-btn avatar-arrow" data-avatar-dir="-1" aria-label="Previous color"
+                data-testid="avatar-prev">‹</button>
               <div class="avatar-frame">
                 <div class="avatar-glow"></div>
                 <div class="avatar-preview" id="avatar-preview" aria-hidden="true" style="width:120px; height:120px;">
-                  <div class="char-head big" id="avatar-big-head"><div class="face"></div></div>
+                  <div class="char-head big" id="avatar-big-head">
+                    <div class="face"></div>
+                  </div>
                 </div>
               </div>
-              <button class="circle-btn avatar-arrow" data-avatar-dir="1" aria-label="Next color" data-testid="avatar-next">›</button>
+              <button class="circle-btn avatar-arrow" data-avatar-dir="1" aria-label="Next color"
+                data-testid="avatar-next">›</button>
             </div>
-            
+
             <!-- In-game player nickname and locale preferences -->
             <div class="name-lang-column" style="display:flex; flex-direction:column; gap:8px; flex:1;">
-              <input class="input-name wood-input" id="login-name" type="text" spellcheck="false" autocomplete="off" placeholder="Enter your name" maxlength="21" data-testid="home-name-input">
+              <input class="input-name wood-input" id="login-name" type="text" spellcheck="false" autocomplete="off"
+                placeholder="Enter your name" maxlength="21" data-testid="home-name-input">
               <select id="login-language" class="wood-select" data-testid="home-language-select"></select>
             </div>
           </div>
 
           <!-- Gameplay action CTA row (Multiplayer Play vs. Private Room Creation) -->
           <div class="cta-row" style="display:flex; flex-direction:row; gap:12px;">
-            <button class="btn play-btn btn-play-green" id="button-login-play" data-testid="button-play" style="flex: 1;">
+            <button class="btn play-btn btn-play-green" id="button-login-play" data-testid="button-play"
+              style="flex: 1;">
               PLAY!
             </button>
-            <button class="btn room-btn btn-play-blue" id="button-login-create" data-testid="button-create-room" style="flex: 1; padding: 0 10px; font-size: 14px;">
+            <button class="btn room-btn btn-play-blue" id="button-login-create" data-testid="button-create-room"
+              style="flex: 1; padding: 0 10px; font-size: 14px;">
               CREATE PRIVATE
             </button>
           </div>
 
           <!-- Private invite lobby code joins inputs -->
           <div class="join-row join-private" style="display:flex; gap:8px;">
-            <input type="text" id="login-room" class="join-input wood-input" placeholder="Have an invite code? Paste it" maxlength="32" data-testid="join-room-input" style="flex:1;">
+            <input type="text" id="login-room" class="join-input wood-input" placeholder="Have an invite code? Paste it"
+              maxlength="32" data-testid="join-room-input" style="flex:1;">
             <button class="btn join-btn" id="button-login-join" data-testid="join-room-button">JOIN →</button>
           </div>
         </div>
@@ -190,10 +232,11 @@
         <div class="screw br"></div>
         <h2>About</h2>
         <p><b>AdvScribbl</b> is a modernized multiplayer drawing &amp; guessing pictionary game.</p>
-        <p>Each game has a few rounds — every round a player draws their chosen word and others guess it to score points!</p>
+        <p>Each game has a few rounds — every round a player draws their chosen word and others guess it to score
+          points!</p>
         <p>The player with the most points at the end is crowned the winner.</p>
       </div>
-      
+
       <!-- Info block: What's new highlights -->
       <div class="section glass-panel" data-testid="section-features">
         <div class="screw tl"></div>
@@ -209,7 +252,7 @@
           <li>Classic 8 colored character avatars</li>
         </ul>
       </div>
-      
+
       <!-- Info block: Rules and how to play instructions -->
       <div class="section glass-panel" data-testid="section-howto">
         <div class="screw tl"></div>
@@ -230,9 +273,9 @@
     <!-- Footer anchors and legal notice -->
     <footer class="footer-bar">
       <div class="tos">
-        <a href="mailto:support@advscribbl.app" data-testid="footer-contact">Contact</a>
-        <a href="/api/terms" target="_blank" data-testid="footer-terms">Terms of Service</a>
-        <a href="/api/credits" target="_blank" data-testid="footer-credits">Credits</a>
+        <a href="/about.html" data-testid="footer-about">About</a>
+        <a href="/contact.html" data-testid="footer-contact">Contact</a>
+        <a href="/privacy.html" data-testid="footer-privacy">Privacy Policy</a>
       </div>
       <div class="notice">User-generated content may not reflect the views of AdvScribbl.</div>
     </footer>
@@ -260,9 +303,12 @@
         <div id="game-word" data-testid="game-word">
           <div class="description">DRAW THIS</div>
           <div class="word">—</div>
-          <div class="hints"><div class="container"></div></div>
+          <div class="hints">
+            <div class="container"></div>
+          </div>
         </div>
-        <button id="leave-game-btn" class="game-bar-btn danger" data-testid="leave-game-button" title="Leave game" aria-label="Leave">Leave</button>
+        <button id="leave-game-btn" class="game-bar-btn danger" data-testid="leave-game-button" title="Leave game"
+          aria-label="Leave">Leave</button>
       </header>
 
       <!-- Sidebar panel: Displays player ranks, avatars, identities, scores, and indicators -->
@@ -283,10 +329,10 @@
         <div class="screw br"></div>
         <!-- Interactive drawing viewport canvas element -->
         <canvas id="draw-canvas" width="800" height="600"></canvas>
-        
+
         <!-- Dark mask screen overlay backdrop -->
         <div class="overlay" id="canvas-overlay"></div>
-        
+
         <!-- Canvas overlay blocks content: Handled dynamically via JavaScript (lobby setups, round summaries, word choices) -->
         <div class="overlay-content" id="canvas-overlay-content">
           <!-- Text prompts (e.g. Choose a word) -->
@@ -300,15 +346,22 @@
           </div>
           <!-- End-of-match final scoreboard winner podiums display -->
           <div class="result" id="overlay-result">
-            <div class="message"><b class="winner-name" id="winner-name"></b><span class="winner-text"> is the winner!</span></div>
+            <div class="message"><b class="winner-name" id="winner-name"></b><span class="winner-text"> is the
+                winner!</span></div>
             <div class="podests">
-              <div class="podest podest-2"><div class="rank">2</div></div>
-              <div class="podest podest-1"><div class="rank">1</div></div>
-              <div class="podest podest-3"><div class="rank">3</div></div>
+              <div class="podest podest-2">
+                <div class="rank">2</div>
+              </div>
+              <div class="podest podest-1">
+                <div class="rank">1</div>
+              </div>
+              <div class="podest podest-3">
+                <div class="rank">3</div>
+              </div>
             </div>
             <div class="ranks" id="ranks-list"></div>
           </div>
-          
+
           <!-- Private match room configuration dashboard and settings -->
           <div class="room" id="overlay-room">
             <h3>Private Room Settings</h3>
@@ -319,25 +372,34 @@
               <label class="custom-words-label" for="custom-words-input">
                 Custom Words <span class="hint">(comma-separated, optional)</span>
               </label>
-              <textarea id="custom-words-input" data-testid="custom-words-input" placeholder="pizza, dosa, sunflower, …" rows="2" maxlength="2000"></textarea>
+              <textarea id="custom-words-input" data-testid="custom-words-input" placeholder="pizza, dosa, sunflower, …"
+                rows="2" maxlength="2000"></textarea>
               <label class="custom-words-only">
                 <input type="checkbox" id="custom-words-only" data-testid="custom-words-only">
                 Use ONLY custom words
               </label>
             </div>
-            
+
             <!-- Lobby-specific avatar personalization selectors -->
             <div class="lobby-avatar-wrap" data-testid="lobby-avatar-wrap">
-              <span class="lobby-avatar-label" style="display:block;margin-top:12px;margin-bottom:6px;font-weight:600;font-size:14px;color:#a5b4fc">Customize Lobby Avatar</span>
-              <div class="avatar-customizer lobby-customizer" style="display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:12px">
-                <button class="avatar-arrow" id="lobby-avatar-prev" type="button" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:#fff;width:36px;height:36px;border-radius:50%;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center">‹</button>
-                <div class="avatar-preview-lobby" id="lobby-avatar-preview" style="width:64px;height:64px;background:rgba(255,255,255,0.04);border-radius:12px;display:flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,0.1)">
-                  <div class="char-head" id="lobby-avatar-head" style="width:40px;height:40px"><div class="face"></div></div>
+              <span class="lobby-avatar-label"
+                style="display:block;margin-top:12px;margin-bottom:6px;font-weight:600;font-size:14px;color:#a5b4fc">Customize
+                Lobby Avatar</span>
+              <div class="avatar-customizer lobby-customizer"
+                style="display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:12px">
+                <button class="avatar-arrow" id="lobby-avatar-prev" type="button"
+                  style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:#fff;width:36px;height:36px;border-radius:50%;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center">‹</button>
+                <div class="avatar-preview-lobby" id="lobby-avatar-preview"
+                  style="width:64px;height:64px;background:rgba(255,255,255,0.04);border-radius:12px;display:flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,0.1)">
+                  <div class="char-head" id="lobby-avatar-head" style="width:40px;height:40px">
+                    <div class="face"></div>
+                  </div>
                 </div>
-                <button class="avatar-arrow" id="lobby-avatar-next" type="button" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:#fff;width:36px;height:36px;border-radius:50%;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center">›</button>
+                <button class="avatar-arrow" id="lobby-avatar-next" type="button"
+                  style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:#fff;width:36px;height:36px;border-radius:50%;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center">›</button>
               </div>
             </div>
-            
+
             <!-- Private game initialization action triggers -->
             <div class="group-buttons">
               <button id="button-start-game" class="btn btn-play-green" data-testid="start-game-button">Start!</button>
@@ -369,7 +431,8 @@
             <!-- Custom Premium Color Tools -->
             <div class="colour-tools" id="premium-color-tools" style="display: none;">
               <div class="color-wheel" id="color-wheel" title="Pick custom color"></div>
-              <button class="random-btn" id="action-random" data-testid="action-random" type="button" title="Random color">🎲 Random</button>
+              <button class="random-btn" id="action-random" data-testid="action-random" type="button"
+                title="Random color">🎲 Random</button>
             </div>
           </div>
         </div>
@@ -380,25 +443,36 @@
           <div class="tools-row">
             <!-- Paint brush/implements selectors group (Pencil, Random Brush, Paint Bucket, Eraser) -->
             <div class="toolbar-group-tools" id="tool-buttons">
-              <button class="tool-btn active" data-tool="pencil" data-testid="tool-pencil" type="button" title="Brush">✏</button>
-              <button class="tool-btn" id="tool-rainbow" data-tool="rainbow" data-testid="tool-rainbow" type="button" title="Random Brush" style="display: none;">🌈</button>
-              <button class="tool-btn" data-tool="bucket" data-testid="tool-bucket" type="button" title="Paint Bucket">🪣</button>
-              <button class="tool-btn" data-tool="eraser" data-testid="tool-eraser" type="button" title="Eraser">🧹</button>
+              <button class="tool-btn active" data-tool="pencil" data-testid="tool-pencil" type="button"
+                title="Brush">✏</button>
+              <button class="tool-btn" id="tool-rainbow" data-tool="rainbow" data-testid="tool-rainbow" type="button"
+                title="Random Brush" style="display: none;">🌈</button>
+              <button class="tool-btn" data-tool="bucket" data-testid="tool-bucket" type="button"
+                title="Paint Bucket">🪣</button>
+              <button class="tool-btn" data-tool="eraser" data-testid="tool-eraser" type="button"
+                title="Eraser">🧹</button>
             </div>
 
             <!-- Standard Brush Size buttons -->
             <div class="sizes" id="size-picker" data-tooltip="Brush size" data-testid="size-picker">
-              <button class="size-btn" data-size="3" data-testid="size-3" type="button"><span class="dot s1"></span></button>
-              <button class="size-btn active" data-size="8" data-testid="size-8" type="button"><span class="dot s2"></span></button>
-              <button class="size-btn" data-size="16" data-testid="size-16" type="button"><span class="dot s3"></span></button>
-              <button class="size-btn" data-size="32" data-testid="size-32" type="button"><span class="dot s4"></span></button>
+              <button class="size-btn" data-size="3" data-testid="size-3" type="button"><span
+                  class="dot s1"></span></button>
+              <button class="size-btn active" data-size="8" data-testid="size-8" type="button"><span
+                  class="dot s2"></span></button>
+              <button class="size-btn" data-size="16" data-testid="size-16" type="button"><span
+                  class="dot s3"></span></button>
+              <button class="size-btn" data-size="32" data-testid="size-32" type="button"><span
+                  class="dot s4"></span></button>
             </div>
 
             <!-- Premium Brush Size Slider -->
             <div class="size-picker" id="premium-size-slider" data-tooltip="Brush size" style="display: none;">
               <span class="size-label">Size</span>
               <button class="size-step" id="size-minus" type="button">–</button>
-              <div class="size-track"><div class="fill" id="size-fill"></div><div class="size-dot" id="size-dot"></div></div>
+              <div class="size-track">
+                <div class="fill" id="size-fill"></div>
+                <div class="size-dot" id="size-dot"></div>
+              </div>
               <button class="size-step" id="size-plus" type="button">+</button>
               <div class="size-swatch" id="size-swatch"></div>
             </div>
@@ -409,8 +483,10 @@
         <div class="panel-section">
           <div class="toolbar-group-actions">
             <button class="action-btn" id="action-undo" data-testid="action-undo" type="button" title="Undo">⟲</button>
-            <button class="action-btn" id="action-redo" data-testid="action-redo" type="button" style="display: none;" disabled title="Redo">⟳</button>
-            <button class="action-btn danger" id="action-clear" data-testid="action-clear" type="button" title="Clear Canvas">🗑</button>
+            <button class="action-btn" id="action-redo" data-testid="action-redo" type="button" style="display: none;"
+              disabled title="Redo">⟳</button>
+            <button class="action-btn danger" id="action-clear" data-testid="action-clear" type="button"
+              title="Clear Canvas">🗑</button>
           </div>
         </div>
 
@@ -425,7 +501,8 @@
           <span class="toggle-label">
             <span class="prem-icon">★</span> Enable Premium Colors
           </span>
-          <button class="premium-toggle-switch" id="toggle-color-panel" data-testid="premium-toggle-switch" aria-pressed="false" role="switch" type="button"></button>
+          <button class="premium-toggle-switch" id="toggle-color-panel" data-testid="premium-toggle-switch"
+            aria-pressed="false" role="switch" type="button"></button>
         </div>
       </section>
 
@@ -440,7 +517,8 @@
         <div class="chat-content" id="chat-content" data-testid="chat-content"></div>
         <!-- Guess submit form form controls -->
         <form class="chat-form" id="chat-form" autocomplete="off">
-          <input type="text" id="chat-input" placeholder="Type your guess here…" maxlength="100" data-testid="chat-input">
+          <input type="text" id="chat-input" placeholder="Type your guess here…" maxlength="100"
+            data-testid="chat-input">
           <button type="submit" class="chat-send" data-testid="chat-send-button">↵</button>
         </form>
       </aside>
@@ -469,7 +547,8 @@
         <li>✓ Premium badge next to your name</li>
         <li>✓ Support indie game development</li>
       </ul>
-      <button class="btn btn-primary btn-pay" id="premium-pay-btn" data-testid="premium-pay-button">Pay ₹25 via Razorpay</button>
+      <button class="btn btn-primary btn-pay" id="premium-pay-btn" data-testid="premium-pay-button">Pay ₹25 via
+        Razorpay</button>
       <!-- Feedback logs or security annotations note -->
       <p class="payment-note" id="payment-note"></p>
     </div>
@@ -484,7 +563,8 @@
     <button class="player-menu-item" data-action="mute" data-testid="player-menu-mute">🔇 Mute</button>
     <button class="player-menu-item" data-action="votekick" data-testid="player-menu-votekick">⚠ Votekick</button>
     <!-- Owner administrative specific panel toggles -->
-    <button class="player-menu-item owner-only" data-action="kick" data-testid="player-menu-kick">⤴ Kick (owner)</button>
+    <button class="player-menu-item owner-only" data-action="kick" data-testid="player-menu-kick">⤴ Kick
+      (owner)</button>
     <button class="player-menu-item owner-only" data-action="ban" data-testid="player-menu-ban">⛔ Ban (owner)</button>
   </div>
 
@@ -500,4 +580,5 @@
   <script src="/js/payment.js"></script>
   <script src="/js/game.js"></script>
 </body>
+
 </html>

@@ -44,6 +44,7 @@
   let secondaryColorIndex = 0;
   let brushSize = 8;
   let tool = 'pencil';
+  let currentHue = 0;
   let drawingEnabled = false;
   let premiumColorsActive = false;
   let languages = [];
@@ -87,8 +88,7 @@
     const btn = ev.target && ev.target.closest('#action-random');
     if (btn) {
       ev.preventDefault();
-      const hex = '#' + Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0');
-      setColor(hex);
+      setColor(randomHexColor());
     }
   });
 
@@ -553,18 +553,24 @@
       $('overlay-result').classList.add('active');
       const ranks = s.data || [];
       const top = ranks[0];
-      if (top) {
-        const wn = players.find((p) => p.id === top[0]);
-        $('winner-name').textContent = wn?.name || '???';
+      try {
+        if (top) {
+          const wn = players.find((p) => p.id === top[0]);
+          $('winner-name').textContent = wn?.name || 'Player';
+        } else {
+          $('winner-name').textContent = 'Someone';
+        }
+        const list = $('ranks-list'); list.innerHTML = '';
+        ranks.forEach((r) => {
+          const p = players.find((x) => x.id === r[0]);
+          if (!p) return;
+          const row = el('div', 'rank-row');
+          row.innerHTML = `<span><b>#${r[1] + 1}</b> ${escapeHTML(p.name)}</span><span>${p.score} pts</span>`;
+          list.appendChild(row);
+        });
+      } catch (e) {
+        console.error('Error rendering podium:', e);
       }
-      const list = $('ranks-list'); list.innerHTML = '';
-      ranks.forEach((r) => {
-        const p = players.find((x) => x.id === r[0]);
-        if (!p) return;
-        const row = el('div', 'rank-row');
-        row.innerHTML = `<span><b>#${r[1] + 1}</b> ${escapeHTML(p.name)}</span><span>${p.score} pts</span>`;
-        list.appendChild(row);
-      });
     }
   }
 
@@ -579,7 +585,9 @@
   }
 
   function showRoomSettings(settings, isOwner) {
+    if (!settings) return;
     const grid = $('settings-grid');
+    const inputs = $$('#lobby-settings input, #lobby-settings select');
     grid.innerHTML = '';
     const fields = [
       { idx: 0, label: 'Language', opts: languages.map((l) => [l.id, l.name]) },
@@ -964,8 +972,22 @@
   let currentShapeType = 'line';
   const undoneCommands = [];
 
+  let rainbowHue = 0;
   function randomHexColor() {
-    return '#' + Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0');
+    rainbowHue = (rainbowHue + 2) % 360;
+    const h = rainbowHue;
+    let r = 0, g = 0, b = 0;
+    const x = 1 - Math.abs((h / 60) % 2 - 1);
+    if (h < 60) { r = 1; g = x; }
+    else if (h < 120) { r = x; g = 1; }
+    else if (h < 180) { g = 1; b = x; }
+    else if (h < 240) { g = x; b = 1; }
+    else if (h < 300) { r = x; b = 1; }
+    else { r = 1; b = x; }
+    r = Math.round(r * 255).toString(16).padStart(2, '0');
+    g = Math.round(g * 255).toString(16).padStart(2, '0');
+    b = Math.round(b * 255).toString(16).padStart(2, '0');
+    return '#' + r + g + b;
   }
 
   function canvasCoord(e) {
@@ -988,7 +1010,12 @@
       drawCommands.push(cmd); renderCommand(cmd); send(19, [cmd]);
       drawing = false;
     } else if (tool === 'pencil' || tool === 'eraser' || tool === 'rainbow') {
-      const usedColor = tool === 'eraser' ? secondaryColorIndex : (tool === 'rainbow' ? randomHexColor() : colorIndex);
+      let usedColor = colorIndex;
+      if (tool === 'eraser') usedColor = secondaryColorIndex;
+      else if (tool === 'rainbow') {
+        usedColor = `hsl(${currentHue}, 100%, 50%)`;
+        currentHue = (currentHue + 2) % 360;
+      }
       const cmd = [0, usedColor, brushSize, p.x, p.y, p.x, p.y];
       drawCommands.push(cmd); renderCommand(cmd); send(19, [cmd]);
     }
@@ -999,7 +1026,12 @@
     const p = canvasCoord(e);
     if (!drawing) return;
     if (tool === 'pencil' || tool === 'eraser' || tool === 'rainbow') {
-      const usedColor = tool === 'eraser' ? secondaryColorIndex : (tool === 'rainbow' ? randomHexColor() : colorIndex);
+      let usedColor = colorIndex;
+      if (tool === 'eraser') usedColor = secondaryColorIndex;
+      else if (tool === 'rainbow') {
+        usedColor = `hsl(${currentHue}, 100%, 50%)`;
+        currentHue = (currentHue + 2) % 360;
+      }
       const cmd = [0, usedColor, brushSize, lastPoint.x, lastPoint.y, p.x, p.y];
       drawCommands.push(cmd); renderCommand(cmd); send(19, [cmd]);
       lastPoint = p;
@@ -1197,6 +1229,8 @@
     ctx.lineWidth = size;
     ctx.strokeStyle = color;
     ctx.fillStyle = color;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
     if (type === 0) {
       ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
       if (x1 === x2 && y1 === y2) { ctx.beginPath(); ctx.arc(x1, y1, size / 2, 0, Math.PI * 2); ctx.fill(); }
@@ -1211,6 +1245,7 @@
   function drawShapePreview(p1, p2, t, colIdx, size) {
     const color = colorFromIdx(colIdx);
     ctx.lineWidth = size; ctx.strokeStyle = color;
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
     drawShapePath(t, p1.x, p1.y, p2.x, p2.y);
     ctx.stroke();
   }

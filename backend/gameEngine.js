@@ -355,15 +355,25 @@ class Room {
 
   gameOver() {
     clearTimeout(this.timer);
-    const ranked = [...this.players].sort((a, b) => b.score - a.score);
-    const data = ranked.map((p, idx) => [p.id, idx, idx === 0 ? 'Winner' : `Rank ${idx + 1}`]);
-    this.changeState(STATE.X, 10, data);
+    clearTimeout(this.startCountdownTimer);
+    try {
+      const ranked = [...this.players].sort((a, b) => b.score - a.score);
+      const data = ranked.map((p, idx) => [p.id, idx, idx === 0 ? 'Winner' : `Rank ${idx + 1}`]);
+      this.changeState(STATE.X, 10, data);
+    } catch (e) {
+      console.error('Error in gameOver state transition:', e);
+    }
+    
     this.timer = setTimeout(() => {
-      // Reset to lobby
-      this.round = 0;
-      this.players.forEach((p) => (p.score = 0));
-      this.changeState(this.type === 1 ? STATE.J : STATE.G, 0, null);
-      if (this.type === 0) this.maybeStartPublic();
+      try {
+        // Reset to lobby
+        this.round = 0;
+        this.players.forEach((p) => (p.score = 0));
+        this.changeState(this.type === 1 ? STATE.J : STATE.G, 0, null);
+        if (this.type === 0) this.maybeStartPublic();
+      } catch (e) {
+        console.error('Error in gameOver timeout:', e);
+      }
     }, 10000);
   }
 
