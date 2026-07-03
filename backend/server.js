@@ -242,6 +242,7 @@ io.on('connection', (socket) => {
         }
         break;
       case 30: if (typeof data === 'string') room.receiveChat(playerId, data); break;
+      case 33: if (typeof data === 'string') room.receiveEmoji(playerId, data); break;
       default: break;
     }
   });

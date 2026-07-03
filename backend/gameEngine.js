@@ -102,9 +102,29 @@ class Room {
       this.endDrawingPhase();
     }
     // Clean up any bot-only or empty room (prevents memory leak)
-    if (this.realPlayerCount() === 0) {
+    const count = this.realPlayerCount();
+    if (count === 0) {
       this.removeAllBots();
       this.cleanup();
+      // Force room back to Lobby so it's clean if someone joins during the 60s grace period
+      this.round = 0;
+      this.currentWord = null;
+      this.currentDrawerId = null;
+      this.drawCommands = [];
+      this.drawerQueue = [];
+      this.revealedHints = [];
+      this.players.forEach((p) => (p.score = 0));
+      this.changeState(this.type === 1 ? STATE.J : STATE.G, 0, null);
+    } else if (count < 2 && this.state.id !== STATE.G && this.state.id !== STATE.J) {
+      // Abort the game if only 1 real player remains and we aren't in the lobby
+      if (this.state.id === STATE.K) {
+        // Just cancel the start countdown
+        clearTimeout(this.startCountdownTimer);
+        this.changeState(this.type === 1 ? STATE.J : STATE.G, 0, null);
+      } else if (this.state.id !== STATE.X) {
+        // End the active game properly
+        this.gameOver();
+      }
     }
   }
   realPlayerCount() {
@@ -138,6 +158,19 @@ class Room {
   changeState(stateId, time = 0, data = null) {
     this.state = { id: stateId, time, data };
     this.broadcast(11, { id: stateId, time, data });
+
+    clearInterval(this.tickTimer);
+    if (time > 0) {
+      let remaining = time;
+      this.tickTimer = setInterval(() => {
+        remaining -= 1;
+        if (remaining < 0) {
+          clearInterval(this.tickTimer);
+          return;
+        }
+        this.broadcast(14, remaining);
+      }, 1000);
+    }
   }
 
   maybeStartPublic() {
@@ -173,6 +206,8 @@ class Room {
     if (this.round > this.settings[3]) return this.gameOver();
     // Build drawer queue for this round (all real+bot players, randomized)
     this.drawerQueue = [...this.players].sort(() => Math.random() - 0.5).map((p) => p.id);
+    this.currentDrawerId = null;
+    this.currentWord = null;
     this.changeState(STATE.F, 3, this.round - 1); // round index (0-based)
     clearTimeout(this.timer);
     this.timer = setTimeout(() => this.nextDrawer(), 3000);
@@ -248,6 +283,10 @@ class Room {
 
     const drawtime = this.settings[2];
     this.startTime = Date.now();
+    
+    // Reset emoji counts for all players at the start of a new drawing phase
+    this.players.forEach(p => p.emojiCount = 0);
+
     this.changeState(STATE.j, drawtime, {
       id: this.currentDrawerId,
       word: this.currentWord.split(' ').map((w) => w.length),
@@ -260,17 +299,6 @@ class Room {
       data: { id: this.currentDrawerId, word: this.currentWord, drawCommands: [] },
     });
 
-    // Timer tick every second
-    let remaining = drawtime;
-    clearInterval(this.tickTimer);
-    this.tickTimer = setInterval(() => {
-      remaining -= 1;
-      if (remaining < 0) {
-        clearInterval(this.tickTimer);
-        return;
-      }
-      this.broadcast(14, remaining);
-    }, 1000);
 
     // Hint schedule
     this.scheduleHints(drawtime);
@@ -281,8 +309,23 @@ class Room {
       this.endDrawingPhase();
     }, drawtime * 1000);
 
-    // If drawer is a bot, generate some doodles
+    // AFK Kick Timer for drawer
     const drawer = this.players.find((p) => p.id === this.currentDrawerId);
+    if (drawer && !drawer.bot) {
+      clearTimeout(this.afkTimer);
+      this.afkTimer = setTimeout(() => {
+        if (this.state.id === STATE.j && this.currentDrawerId === drawer.id) {
+          if (this.drawCommands.length === 0) {
+            this.broadcast(30, { id: 0, msg: `${drawer.name} was kicked for not drawing.` });
+            this.sendTo(drawer.id, 100, 1);
+            this.removePlayer(drawer.id, 1);
+            this.kickPlayerSocket(drawer);
+          }
+        }
+      }, 20000);
+    }
+
+    // If drawer is a bot, generate some doodles
     if (drawer && drawer.bot) {
       this.botDoodle();
     }
@@ -326,6 +369,7 @@ class Room {
   }
 
   endDrawingPhase() {
+    clearTimeout(this.afkTimer);
     clearTimeout(this.timer);
     clearInterval(this.tickTimer);
     clearInterval(this.hintInterval);
@@ -368,6 +412,11 @@ class Room {
       try {
         // Reset to lobby
         this.round = 0;
+        this.currentWord = null;
+        this.currentDrawerId = null;
+        this.drawCommands = [];
+        this.drawerQueue = [];
+        this.revealedHints = [];
         this.players.forEach((p) => (p.score = 0));
         this.changeState(this.type === 1 ? STATE.J : STATE.G, 0, null);
         if (this.type === 0) this.maybeStartPublic();
@@ -402,6 +451,18 @@ class Room {
     if (newLen < 0 || newLen > this.drawCommands.length) return;
     this.drawCommands.length = newLen;
     this.broadcast(21, newLen);
+  }
+
+  receiveEmoji(playerId, emojiStr) {
+    const p = this.players.find((x) => x.id === playerId);
+    if (!p) return;
+    
+    // Server-side check for max 5 emojis per drawing round
+    p.emojiCount = p.emojiCount || 0;
+    if (p.emojiCount >= 5) return;
+    
+    p.emojiCount++;
+    this.broadcast(33, emojiStr);
   }
 
   /* ---- chat & guessing ---- */
@@ -657,6 +718,7 @@ class Room {
   }
 
   cleanup() {
+    clearTimeout(this.afkTimer);
     clearTimeout(this.timer);
     clearTimeout(this.startCountdownTimer);
     clearInterval(this.tickTimer);

@@ -1,0 +1,29 @@
+# AdvScribbl - Recent Updates & Features
+
+## 1. UI & Layout Improvements
+* Reorganized the main layout: The Color Panel is now positioned perfectly to the right of the canvas, and the Chat Panel is below the canvas.
+* Fixed the Shapes Menu: Increased the frame size so shapes are clearly visible instead of appearing as empty white circles.
+* Adjusted the Premium Color Tools: Moved the color ring and the 'Random Color' button to the right side of the active color preview square for better UX.
+
+## 2. Drawing Tool Fixes
+* Fixed the Random Color Button: It now instantly selects a random color when clicked, instead of slowly transitioning through hues.
+* Restored the Redo Button: Fixed functionality so players can redo undone drawing strokes.
+* Adjusted brush size controls layout in the premium tools area.
+
+## 3. Game Flow & Room Stability
+* Fixed Game Freezes: Resolved issues where the game would freeze or get stuck when transitioning between rounds or when the game finishes.
+* Fixed Word Selection: Resolved logic confusions during the word selection phase.
+* Improved Room Management: If a drawer leaves mid-game, the turn now automatically shifts to the next player. The game gracefully waits and resumes when players join an empty or 1-player room.
+
+## 4. AFK & Timer Systems
+* AFK Kick Timer: Implemented a 35-second AFK timer. If a drawer doesn't touch the canvas within 35 seconds of their turn starting, they are automatically kicked from the room with a message.
+* Fixed Frozen Clock: The visual timer clock now accurately counts down during Word Selection, Round Transitions, and the Game Over Podium (it previously only worked during the drawing phase).
+
+## 5. Visual Enhancements & Polish
+* Cleaned Up Podium Screen: The top header text is now properly cleared during the Game Over podium screen, preventing old words or "GUESS THE WORD" from lingering.
+* Delta Score Display (+Points): During the 5-second round reveal, the exact points a player earned (e.g., +788) are now visually displayed next to their total score in the player list.
+* Better Guessed Highlights: The green highlight on a player's card (indicating they guessed correctly) is now brighter and more visible. It also correctly resets at the very start of every new drawer's turn.
+
+## 6. Brand New Features
+* Live-Stream Floating Emojis: Added a bar of high-quality emojis below the chat input. When clicked, emojis spawn and float up across the drawing canvas (similar to TikTok/Instagram live streams).
+* Emoji Anti-Spam: Implemented a server-enforced limit where players can only send a maximum of 5 emojis per drawing. The limit automatically resets for everyone when a new drawing starts.

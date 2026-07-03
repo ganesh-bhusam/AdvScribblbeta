@@ -48,6 +48,7 @@
   let drawingEnabled = false;
   let premiumColorsActive = false;
   let languages = [];
+  let myEmojiCount = 0;
   let avatarIdx = 0;
   const mutedPlayerIds = new Set();
   // Drawing-rating aggregation (cleared on new drawer)
@@ -254,6 +255,7 @@
       case 20: onClearCanvas(); break;
       case 21: onUndo(data); break;
       case 30: onChat(data); break;
+      case 33: onEmoji(data); break;
       case 31: onWarning(data); break;
       case 32: onSpamWarning(data); break;
       case 100: onKickReason(data); break;
@@ -394,6 +396,9 @@
 
   // ============================ STATE APPLICATION ============================
   function applyState(s) {
+    if (s.id !== STATE.Z) {
+      players.forEach((p) => delete p.delta);
+    }
     undoneCommands.length = 0;
     updateRedoButtonState();
     const overlay = $('canvas-overlay');
@@ -439,6 +444,11 @@
       clearCanvasLocal();
       drawCommands.length = 0;
     } else if (s.id === STATE.V) {
+      myEmojiCount = 0;
+      players.forEach((p) => (p.guessed = false));
+      updatePlayersList();
+      clearCanvasLocal();
+      drawCommands.length = 0;
       currentDrawerId = s.data?.id;
       const isDrawer = currentDrawerId === me;
       overlay.classList.add('active');
@@ -554,6 +564,12 @@
       overlay.classList.add('active');
       overlayContent.classList.add('active');
       $('overlay-result').classList.add('active');
+
+      // Clear the header text since the game is over
+      $('game-round').querySelector('.text').textContent = 'Game Over';
+      $('game-word').querySelector('.word').textContent = '-';
+      $('game-word').querySelector('.description').textContent = '';
+
       const ranks = s.data || [];
       const top = ranks[0];
       try {
@@ -661,7 +677,14 @@
         const muteIcon = el('span', 'mute-icon', ' 🔇');
         nameRow.appendChild(muteIcon);
       }
-      const sc = el('div', 'player-score', (p.score || 0) + ' pts' + (p.guessed ? ' • guessed ✓' : ''));
+      let scoreText = (p.score || 0) + ' pts';
+      if (p.delta && p.delta > 0) {
+        scoreText += ` (+${p.delta})`;
+      }
+      if (p.guessed) {
+        scoreText += ' • guessed ✓';
+      }
+      const sc = el('div', 'player-score', scoreText);
       info.appendChild(nameRow); info.appendChild(sc);
       const rank = el('div', 'player-rank', '#' + (idx + 1));
       card.appendChild(av); card.appendChild(info); card.appendChild(rank);
@@ -770,6 +793,38 @@
     send(30, t);
     inp.value = '';
   });
+
+  document.querySelectorAll('.emoji-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (myEmojiCount >= 5) return; // limit per turn
+      const emojiChar = btn.dataset.emoji;
+      if (!emojiChar) return;
+      myEmojiCount++;
+      send(33, emojiChar);
+      spawnFloatingEmoji(emojiChar);
+    });
+  });
+
+  function onEmoji(data) {
+    if (typeof data !== 'string') return;
+    spawnFloatingEmoji(data);
+  }
+
+  function spawnFloatingEmoji(emojiChar) {
+    const wrap = $('canvas-wrapper');
+    if (!wrap) return;
+    const elEmoji = el('div', 'floating-emoji', emojiChar);
+    // Random position horizontally across the canvas width (20% to 80%)
+    const leftPercent = 20 + Math.random() * 60;
+    elEmoji.style.left = leftPercent + '%';
+    wrap.appendChild(elEmoji);
+    setTimeout(() => {
+      if (elEmoji.parentNode === wrap) {
+        wrap.removeChild(elEmoji);
+      }
+    }, 2000);
+  }
+
 
   // ============================ COLOR PALETTE ============================
   function buildPalette(usePremium) {
