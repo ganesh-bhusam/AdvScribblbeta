@@ -975,8 +975,8 @@
     "username": "sdfsddfsdsfdsfdsfds",
     "email": "esh@gmail.com",
     "password_hash": "$2a$10$Yiv.3yY0FYRZBDWXjrgQ6extQtlc4K7fR1qxiR6eum0oDXjeZASCu",
-    "has_premium": 0,
-    "ad_free_until": null,
+    "has_premium": 1,
+    "ad_free_until": "2026-12-29T11:39:02.821Z",
     "created_at": "2026-06-29T17:15:12.556Z"
   },
   {
@@ -1098,5 +1098,25 @@
     "has_premium": 0,
     "ad_free_until": null,
     "created_at": "2026-06-30T15:18:28.023Z"
+  },
+  {
+    "id": 111,
+    "name": "DFVRGDFVC",
+    "username": "RDGFVC",
+    "email": "h@gmail.com",
+    "password_hash": "$2a$10$Sj41O7ch07z.LgkcfHmKnele9yx54Qa5uSU8Yeyp9uRfAlTawva6m",
+    "has_premium": 0,
+    "ad_free_until": null,
+    "created_at": "2026-07-02T12:10:43.823Z"
+  },
+  {
+    "id": 112,
+    "name": "asdfadsfadsfasdfvvd",
+    "username": "vrgdg",
+    "email": "sdfasdfadstq43@gmail.com",
+    "password_hash": "$2a$10$wZ8.b3tVAzWFk5a8CnGSMeIV43awNF08nEgQKkoZX6jaoFHJNxUUS",
+    "has_premium": 1,
+    "ad_free_until": "2026-12-30T06:50:22.051Z",
+    "created_at": "2026-07-03T06:49:46.843Z"
   }
 ]

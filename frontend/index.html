@@ -426,14 +426,14 @@
               <div class="primary" id="color-primary"></div>
               <div class="secondary" id="color-secondary"></div>
             </div>
-            <!-- Color selection grid palette options -->
-            <div class="colors" id="color-grid" data-tooltip="Click to choose a color" data-testid="color-grid"></div>
             <!-- Custom Premium Color Tools -->
             <div class="colour-tools" id="premium-color-tools" style="display: none;">
               <div class="color-wheel" id="color-wheel" title="Pick custom color"></div>
               <button class="random-btn" id="action-random" data-testid="action-random" type="button"
                 title="Random color">🎲 Random</button>
             </div>
+            <!-- Color selection grid palette options -->
+            <div class="colors" id="color-grid" data-tooltip="Click to choose a color" data-testid="color-grid"></div>
           </div>
         </div>
 
@@ -465,17 +465,7 @@
                   class="dot s4"></span></button>
             </div>
 
-            <!-- Premium Brush Size Slider -->
-            <div class="size-picker" id="premium-size-slider" data-tooltip="Brush size" style="display: none;">
-              <span class="size-label">Size</span>
-              <button class="size-step" id="size-minus" type="button">–</button>
-              <div class="size-track">
-                <div class="fill" id="size-fill"></div>
-                <div class="size-dot" id="size-dot"></div>
-              </div>
-              <button class="size-step" id="size-plus" type="button">+</button>
-              <div class="size-swatch" id="size-swatch"></div>
-            </div>
+
           </div>
         </div>
 
@@ -513,14 +503,14 @@
         <div class="screw bl"></div>
         <div class="screw br"></div>
         <div class="panel-title">Chat</div>
-        <!-- Messages output container scroll box -->
-        <div class="chat-content" id="chat-content" data-testid="chat-content"></div>
         <!-- Guess submit form form controls -->
         <form class="chat-form" id="chat-form" autocomplete="off">
           <input type="text" id="chat-input" placeholder="Type your guess here…" maxlength="100"
             data-testid="chat-input">
           <button type="submit" class="chat-send" data-testid="chat-send-button">↵</button>
         </form>
+        <!-- Messages output container scroll box -->
+        <div class="chat-content" id="chat-content" data-testid="chat-content"></div>
       </aside>
     </div>
   </div>

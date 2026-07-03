@@ -359,7 +359,6 @@
   function onUndo(newLen) {
     drawCommands.length = Math.max(0, Math.min(newLen, drawCommands.length));
     redrawAll();
-    undoneCommands.length = 0;
     updateRedoButtonState();
   }
   function onChat(d) {
@@ -404,6 +403,8 @@
     [...overlayContent.children].forEach((c) => c.classList.remove('active'));
     currentDrawerId = null;
     drawingEnabled = false;
+    if ($('game-toolbar')) $('game-toolbar').style.display = 'none';
+    if ($('game-wrapper')) $('game-wrapper').classList.remove('is-drawing');
     // Hide rate bar by default (re-enabled inside STATE.j only)
     const rb = $('rate-bar');
     if (rb) rb.classList.remove('show');
@@ -496,6 +497,8 @@
       const isDrawer = currentDrawerId === me;
       drawingEnabled = isDrawer;
       canvas.style.cursor = isDrawer ? 'crosshair' : 'default';
+      if ($('game-toolbar')) $('game-toolbar').style.display = isDrawer ? 'flex' : 'none';
+      if ($('game-wrapper')) $('game-wrapper').classList.toggle('is-drawing', isDrawer);
       // Reset rating state for new drawing
       rateScores = new Map();
       myRate = null;
@@ -800,11 +803,8 @@
 
     const standardSize = $('size-picker');
     const premiumSize = $('premium-size-slider');
-    if (standardSize) standardSize.style.display = usePremium ? 'none' : 'flex';
-    if (premiumSize) {
-      premiumSize.style.display = usePremium ? 'flex' : 'none';
-      if (usePremium) applySizeSlider();
-    }
+    if (standardSize) standardSize.style.display = 'flex';
+    if (premiumSize) premiumSize.style.display = 'none';
 
     const rainbowBtn = $('tool-rainbow');
     if (rainbowBtn) {
@@ -974,20 +974,7 @@
 
   let rainbowHue = 0;
   function randomHexColor() {
-    rainbowHue = (rainbowHue + 2) % 360;
-    const h = rainbowHue;
-    let r = 0, g = 0, b = 0;
-    const x = 1 - Math.abs((h / 60) % 2 - 1);
-    if (h < 60) { r = 1; g = x; }
-    else if (h < 120) { r = x; g = 1; }
-    else if (h < 180) { g = 1; b = x; }
-    else if (h < 240) { g = x; b = 1; }
-    else if (h < 300) { r = x; b = 1; }
-    else { r = 1; b = x; }
-    r = Math.round(r * 255).toString(16).padStart(2, '0');
-    g = Math.round(g * 255).toString(16).padStart(2, '0');
-    b = Math.round(b * 255).toString(16).padStart(2, '0');
-    return '#' + r + g + b;
+    return '#' + Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0');
   }
 
   function canvasCoord(e) {
