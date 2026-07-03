@@ -1,3 +1,6 @@
+const fs = require('fs');
+const path = require('path');
+
 /**
  * Word banks for matchmaking — partitioned by language.
  * Standard English + 8 Romanized Indian languages (Hinglish, Tamiglish, Teluglish,
@@ -140,6 +143,46 @@ const WORD_BANKS = {
   7: { code: 'kannadaglish', name: 'Kannadaglish', words: KANNADAGLISH },
   8: { code: 'malayalaglish', name: 'Malayalaglish', words: MALAYALAGLISH },
 };
+
+// --- DYNAMICALLY LOAD NEW WORD BANKS ---
+try {
+  const BANKS_DIR = path.join(__dirname, 'data', 'word_banks');
+  if (fs.existsSync(BANKS_DIR)) {
+    // Load English and merge
+    const enPath = path.join(BANKS_DIR, 'en_english.json');
+    if (fs.existsSync(enPath)) {
+      const data = JSON.parse(fs.readFileSync(enPath, 'utf8').replace(/^\uFEFF/, ''));
+      WORD_BANKS[0].words = Array.from(new Set([...ENGLISH, ...data.words.value]));
+      console.log(`[wordBanks] Merged en_english.json. Total English words: ${WORD_BANKS[0].words.length}`);
+    }
+
+    // Load German
+    const dePath = path.join(BANKS_DIR, 'de_german.json');
+    if (fs.existsSync(dePath)) {
+      const data = JSON.parse(fs.readFileSync(dePath, 'utf8').replace(/^\uFEFF/, ''));
+      WORD_BANKS[9] = { code: 'german', name: 'German', words: data.words.value };
+      console.log(`[wordBanks] Loaded German (${WORD_BANKS[9].words.length} words)`);
+    }
+
+    // Load Spanish
+    const esPath = path.join(BANKS_DIR, 'es_spanish.json');
+    if (fs.existsSync(esPath)) {
+      const data = JSON.parse(fs.readFileSync(esPath, 'utf8').replace(/^\uFEFF/, ''));
+      WORD_BANKS[10] = { code: 'spanish', name: 'Spanish', words: data.words.value };
+      console.log(`[wordBanks] Loaded Spanish (${WORD_BANKS[10].words.length} words)`);
+    }
+
+    // Load French
+    const frPath = path.join(BANKS_DIR, 'fr_french.json');
+    if (fs.existsSync(frPath)) {
+      const data = JSON.parse(fs.readFileSync(frPath, 'utf8').replace(/^\uFEFF/, ''));
+      WORD_BANKS[11] = { code: 'french', name: 'French', words: data.words.value };
+      console.log(`[wordBanks] Loaded French (${WORD_BANKS[11].words.length} words)`);
+    }
+  }
+} catch (err) {
+  console.error('[wordBanks] Error loading dynamic word banks:', err);
+}
 
 function getLanguageList() {
   return Object.entries(WORD_BANKS).map(([id, v]) => ({

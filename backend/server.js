@@ -15,6 +15,7 @@ require('dotenv').config();
 
 const express    = require('express');
 const http       = require('http');
+const path       = require('path');
 const cors       = require('cors');
 const bodyParser = require('body-parser');
 const { Server } = require('socket.io');
@@ -120,6 +121,14 @@ app.post('/api/private', (req, res) => {
 // Static pages
 app.get('/api/terms',   (req, res) => res.type('html').send(TERMS_HTML));
 app.get('/api/credits', (req, res) => res.type('html').send(CREDITS_HTML));
+
+// Serve the entire frontend directly from the backend
+app.use(express.static(path.join(__dirname, '../frontend')));
+
+// Fallback for single-page app deep links
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '../frontend/index.html'));
+});
 
 // ===================== SERVER + SOCKET.IO =====================
 const server = http.createServer(app);

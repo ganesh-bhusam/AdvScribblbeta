@@ -339,13 +339,14 @@ class Room {
     const interval = Math.floor((drawtime * 1000) / (hintCount + 1));
     let revealed = 0;
     this.hintInterval = setInterval(() => {
-      if (revealed >= hintCount) {
+      const word = this.currentWord;
+      if (revealed >= hintCount || !word) {
         clearInterval(this.hintInterval);
         return;
       }
       const candidates = [];
-      for (let i = 0; i < this.currentWord.length; i++) {
-        if (this.currentWord[i] === ' ') continue;
+      for (let i = 0; i < word.length; i++) {
+        if (word[i] === ' ') continue;
         if (this.revealedHints.includes(i)) continue;
         candidates.push(i);
       }

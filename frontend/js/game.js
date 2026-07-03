@@ -9,7 +9,7 @@
  */
 (function () {
   window.ENV = window.ENV || {};
-  window.ENV.API = 'http://localhost:8001';
+  window.ENV.API = '';
 
   const STATE = { G: 0, K: 1, F: 2, V: 3, j: 4, Z: 5, X: 6, J: 7 };
 

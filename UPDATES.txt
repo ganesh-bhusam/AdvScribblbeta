@@ -34,3 +34,13 @@
 * Reversed Chat Message Order: Changed the chat box to display the newest messages visually at the top (using CSS column-reverse), making it easier to track recent guesses without looking down.
 * Guesser Chat Scrolling Fix: Fixed an issue where the chat panel would expand infinitely downwards when the user was guessing. The chat grid row is now strictly capped, and the internal panel strictly handles scrolling correctly.
 * Chat Scrollbar Aesthetics: Updated the chat scrollbar color to a sleek, semi-transparent black for much better contrast against the white chat background.
+
+## 8. Database & Architecture Overhaul (2026-07-03)
+* Replaced JSON flat-files with a robust node:sqlite database, secured the Git repository via .gitignore, consolidated the frontend to be served directly from the backend, and securely rotated production credentials (JWT and Razorpay).
+
+## 9. Security, Architecture & Stability (2026-07-03)
+* Ignored sensitive files from version control: Added `.gitignore` to both frontend and backend to protect `.env` secrets and JSON database files.
+* Architecture shift: Updated the Express server to statically serve the frontend assets so both frontend and backend run on the exact same port and origin, solving CORS and deployment complexity.
+* Cleaned up dead SQLite files (`skribbl.db`, etc.) left over from a previous database iteration.
+* Fixed Backend Crash Bug: Patched a race condition in `gameEngine.js` where `scheduleHints` was not properly clearing its interval on round transitions, leading to a `TypeError` when reading `currentWord.length` and crashing the server.
+* Expanded Word Banks: Dynamically merged a new, larger multi-language word bank setup, increasing the English vocabulary to nearly 3700 words and adding full support for German, Spanish, French and other regional variations.
