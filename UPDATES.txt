@@ -27,3 +27,10 @@
 ## 6. Brand New Features
 * Live-Stream Floating Emojis: Added a bar of high-quality emojis below the chat input. When clicked, emojis spawn and float up across the drawing canvas (similar to TikTok/Instagram live streams).
 * Emoji Anti-Spam: Implemented a server-enforced limit where players can only send a maximum of 5 emojis per drawing. The limit automatically resets for everyone when a new drawing starts.
+
+## 7. Recent UI & Chat Polish (2026-07-03 17:01)
+* Player Panel Speech Bubbles: When a player types in chat or sends an emoji, a dynamic speech bubble now temporarily pops out from the right side of their player card.
+* Increased Emoji Limit: Raised the floating emoji click limit from 5 to 15 per drawing round.
+* Reversed Chat Message Order: Changed the chat box to display the newest messages visually at the top (using CSS column-reverse), making it easier to track recent guesses without looking down.
+* Guesser Chat Scrolling Fix: Fixed an issue where the chat panel would expand infinitely downwards when the user was guessing. The chat grid row is now strictly capped, and the internal panel strictly handles scrolling correctly.
+* Chat Scrollbar Aesthetics: Updated the chat scrollbar color to a sleek, semi-transparent black for much better contrast against the white chat background.

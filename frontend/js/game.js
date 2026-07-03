@@ -367,6 +367,31 @@
     if (mutedPlayerIds.has(d.id)) return;
     const p = players.find((x) => x.id === d.id);
     addChat({ author: p?.name || '?', msg: d.msg });
+    showPlayerBubble(d.id, d.msg);
+  }
+  function showPlayerBubble(playerId, text) {
+    const p = players.find(x => x.id === playerId);
+    if (!p) return;
+    
+    const card = document.querySelector(`.player-card[data-player-id="${playerId}"]`);
+    if (card) {
+      if (p.bubbleNode) p.bubbleNode.remove();
+      
+      const bubble = el('div', 'player-speech-bubble', text);
+      document.body.appendChild(bubble);
+      p.bubbleNode = bubble;
+      
+      const rect = card.getBoundingClientRect();
+      bubble.style.position = 'fixed';
+      bubble.style.top = (rect.top + rect.height / 2) + 'px';
+      bubble.style.left = rect.right + 'px';
+      
+      if (p.bubbleTimeout) clearTimeout(p.bubbleTimeout);
+      p.bubbleTimeout = setTimeout(() => {
+        if (bubble.parentNode) bubble.remove();
+        p.bubbleNode = null;
+      }, 3000);
+    }
   }
   function onWarning(d) {
     const map = { 0: 'Need at least 2 players to start' };
@@ -776,13 +801,12 @@
     if (system) m.innerHTML = '<i>' + escapeHTML(author) + ' ' + escapeHTML(msg) + '</i>';
     else m.innerHTML = '<span class="author">' + escapeHTML(author) + ':</span>' + escapeHTML(msg);
     wrap.appendChild(m);
-    wrap.scrollTop = wrap.scrollHeight;
   }
   function addChatSystem(msg, kind) {
     const wrap = $('chat-content');
     const m = el('div', 'chat-msg system' + (kind ? ' ' + kind : ''));
     m.textContent = msg;
-    wrap.appendChild(m); wrap.scrollTop = wrap.scrollHeight;
+    wrap.appendChild(m);
   }
 
   $('chat-form').addEventListener('submit', (e) => {
@@ -796,22 +820,27 @@
 
   document.querySelectorAll('.emoji-btn').forEach(btn => {
     btn.addEventListener('click', () => {
-      if (myEmojiCount >= 5) return; // limit per turn
+      if (myEmojiCount >= 15) return; // limit per turn
       const emojiChar = btn.dataset.emoji;
       if (!emojiChar) return;
       myEmojiCount++;
       send(33, emojiChar);
       spawnFloatingEmoji(emojiChar);
+      showPlayerBubble(me, emojiChar);
     });
   });
 
   function onEmoji(data) {
-    if (typeof data !== 'string') return;
-    spawnFloatingEmoji(data);
+    if (typeof data === 'string') {
+      spawnFloatingEmoji(data);
+    } else if (data && data.emoji) {
+      spawnFloatingEmoji(data.emoji);
+      showPlayerBubble(data.id, data.emoji);
+    }
   }
 
   function spawnFloatingEmoji(emojiChar) {
-    const wrap = $('canvas-wrapper');
+    const wrap = $('game-canvas');
     if (!wrap) return;
     const elEmoji = el('div', 'floating-emoji', emojiChar);
     // Random position horizontally across the canvas width (20% to 80%)

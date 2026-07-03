@@ -322,7 +322,7 @@ class Room {
             this.kickPlayerSocket(drawer);
           }
         }
-      }, 20000);
+      }, 35000); // 35 seconds
     }
 
     // If drawer is a bot, generate some doodles
@@ -459,10 +459,10 @@ class Room {
     
     // Server-side check for max 5 emojis per drawing round
     p.emojiCount = p.emojiCount || 0;
-    if (p.emojiCount >= 5) return;
+    if (p.emojiCount >= 15) return;
     
     p.emojiCount++;
-    this.broadcast(33, emojiStr);
+    this.broadcast(33, { id: playerId, emoji: emojiStr }, p.socketId);
   }
 
   /* ---- chat & guessing ---- */
