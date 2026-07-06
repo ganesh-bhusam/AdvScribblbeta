@@ -33,13 +33,13 @@ function userToPublic(user) {
   };
 }
 
-function authMiddleware(req, res, next) {
+async function authMiddleware(req, res, next) {
   const header = req.headers.authorization || '';
   const token = header.startsWith('Bearer ') ? header.slice(7) : null;
   if (!token) return res.status(401).json({ error: 'Missing token' });
   try {
     const payload = jwt.verify(token, JWT_SECRET);
-    const user = q.findUserById.get(payload.uid);
+    const user = await q.findUserById(payload.uid);
     if (!user) return res.status(401).json({ error: 'User not found' });
     req.user = user;
     next();
@@ -49,48 +49,58 @@ function authMiddleware(req, res, next) {
 }
 
 // POST /api/auth/signup
-router.post('/signup', (req, res) => {
-  const { name, username, email, password } = req.body || {};
-  if (!name || !username || !email || !password) {
-    return res.status(400).json({ error: 'All fields are required' });
-  }
-  if (password.length < 6) {
-    return res.status(400).json({ error: 'Password must be at least 6 characters' });
-  }
-  if (!/^[a-zA-Z0-9_.-]{3,21}$/.test(username)) {
-    return res.status(400).json({ error: 'Username must be 3-21 chars (letters, numbers, _ . -)' });
-  }
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    return res.status(400).json({ error: 'Invalid email address' });
-  }
+router.post('/signup', async (req, res) => {
+  try {
+    const { name, username, email, password } = req.body || {};
+    if (!name || !username || !email || !password) {
+      return res.status(400).json({ error: 'All fields are required' });
+    }
+    if (password.length < 6) {
+      return res.status(400).json({ error: 'Password must be at least 6 characters' });
+    }
+    if (!/^[a-zA-Z0-9_.-]{3,21}$/.test(username)) {
+      return res.status(400).json({ error: 'Username must be 3-21 chars (letters, numbers, _ . -)' });
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return res.status(400).json({ error: 'Invalid email address' });
+    }
 
-  if (q.findUserByUsername.get(username)) {
-    return res.status(409).json({ error: 'Username already taken' });
-  }
-  if (q.findUserByEmail.get(email)) {
-    return res.status(409).json({ error: 'Email already registered' });
-  }
+    if (await q.findUserByUsername(username)) {
+      return res.status(409).json({ error: 'Username already taken' });
+    }
+    if (await q.findUserByEmail(email)) {
+      return res.status(409).json({ error: 'Email already registered' });
+    }
 
-  const password_hash = bcrypt.hashSync(password, 10);
-  const info = q.insertUser.run(name, username, email, password_hash);
-  const user = q.findUserById.get(info.lastInsertRowid);
-  const token = signToken(user);
-  return res.status(201).json({ token, user: userToPublic(user) });
+    const password_hash = bcrypt.hashSync(password, 10);
+    const info = await q.insertUser(name, username, email, password_hash);
+    const user = await q.findUserById(info.id);
+    const token = signToken(user);
+    return res.status(201).json({ token, user: userToPublic(user) });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
 });
 
 // POST /api/auth/login
-router.post('/login', (req, res) => {
-  const { username, password } = req.body || {};
-  if (!username || !password) {
-    return res.status(400).json({ error: 'Username and password are required' });
+router.post('/login', async (req, res) => {
+  try {
+    const { username, password } = req.body || {};
+    if (!username || !password) {
+      return res.status(400).json({ error: 'Username and password are required' });
+    }
+    const user = await q.findUserByUsername(username);
+    if (!user) return res.status(401).json({ error: 'Invalid credentials' });
+    if (!bcrypt.compareSync(password, user.password_hash)) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+    const token = signToken(user);
+    return res.json({ token, user: userToPublic(user) });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
   }
-  const user = q.findUserByUsername.get(username);
-  if (!user) return res.status(401).json({ error: 'Invalid credentials' });
-  if (!bcrypt.compareSync(password, user.password_hash)) {
-    return res.status(401).json({ error: 'Invalid credentials' });
-  }
-  const token = signToken(user);
-  return res.json({ token, user: userToPublic(user) });
 });
 
 // GET /api/auth/me  (refreshes premium status etc.)

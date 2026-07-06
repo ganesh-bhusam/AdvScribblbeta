@@ -532,7 +532,7 @@
       currentDrawerId = s.data?.id;
       const isDrawer = currentDrawerId === me;
       drawingEnabled = isDrawer;
-      canvas.style.cursor = isDrawer ? 'crosshair' : 'default';
+      updateCanvasCursor();
       if ($('game-toolbar')) $('game-toolbar').style.display = isDrawer ? 'flex' : 'none';
       if ($('game-wrapper')) $('game-wrapper').classList.toggle('is-drawing', isDrawer);
       // Reset rating state for new drawing
@@ -877,6 +877,13 @@
     });
     refreshColorSelection();
 
+    usePremium = window.Auth?.user()?.has_premium || window.mockPremium;
+    if (usePremium) {
+      document.body.classList.add('premium-cursor');
+    } else {
+      document.body.classList.remove('premium-cursor');
+    }
+
     // Show/hide premium toolbar sections in sync with toggle state
     const customTools = $('premium-color-tools');
     if (customTools) customTools.style.display = usePremium ? 'flex' : 'none';
@@ -939,6 +946,22 @@
     else setColor(11);
   });
 
+  function updateCanvasCursor() {
+    const cvs = $('game-canvas');
+    if (!cvs) return;
+    cvs.classList.remove('tool-pencil', 'tool-eraser', 'tool-fill');
+    
+    if (!drawingEnabled) {
+      canvas.style.cursor = 'default';
+      return;
+    }
+    
+    canvas.style.cursor = ''; // clear inline style to let CSS classes take over
+    if (tool === 'pencil' || tool === 'rainbow') cvs.classList.add('tool-pencil');
+    else if (tool === 'eraser') cvs.classList.add('tool-eraser');
+    else if (tool === 'bucket') cvs.classList.add('tool-fill');
+  }
+
   // ============================ TOOLS / SIZES ============================
   document.querySelectorAll('#tool-buttons .tool-btn').forEach((b) => {
     b.addEventListener('click', () => {
@@ -946,6 +969,7 @@
       document.querySelectorAll('.shape-btn').forEach((x) => x.classList.remove('active'));
       b.classList.add('active');
       tool = b.dataset.tool;
+      updateCanvasCursor();
     });
   });
   document.querySelectorAll('#size-picker .size-btn').forEach((b) => {
@@ -1496,6 +1520,7 @@
         document.querySelectorAll('#tool-buttons .tool-btn').forEach(x => x.classList.remove('active'));
         b.classList.add('active');
         tool = 'shape';
+        updateCanvasCursor();
         currentShapeType = s.id;
       });
       grid.appendChild(b);

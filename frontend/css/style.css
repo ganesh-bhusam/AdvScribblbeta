@@ -1321,6 +1321,21 @@ select option {
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.06) inset;
 }
 
+/* Tool Cursors */
+#game-canvas.tool-pencil canvas { cursor: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'><text y='20' font-size='20'>✏️</text></svg>") 0 24, crosshair; }
+#game-canvas.tool-eraser canvas { cursor: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'><text y='20' font-size='20'>🧽</text></svg>") 12 12, crosshair; }
+#game-canvas.tool-fill canvas { cursor: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'><text y='20' font-size='20'>🪣</text></svg>") 4 20, crosshair; }
+
+/* Premium Chameleon Cursor */
+body.premium-cursor, body.premium-cursor * {
+  cursor: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 24 24'><text y='22' font-size='22'>🦎</text></svg>") 4 4, auto !important;
+}
+/* Ensure drawing tools override the global premium cursor on canvas */
+body.premium-cursor #game-canvas.tool-pencil canvas { cursor: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'><text y='20' font-size='20'>✏️</text></svg>") 0 24, crosshair !important; }
+body.premium-cursor #game-canvas.tool-eraser canvas { cursor: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'><text y='20' font-size='20'>🧽</text></svg>") 12 12, crosshair !important; }
+body.premium-cursor #game-canvas.tool-fill canvas { cursor: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'><text y='20' font-size='20'>🪣</text></svg>") 4 20, crosshair !important; }
+
+
 .overlay {
   position: absolute;
   inset: 12px;
@@ -1371,6 +1386,10 @@ select option {
   padding: 24px;
 }
 
+.overlay-content > .words.active {
+  display: flex;
+}
+
 .words {
   display: flex;
   flex-direction: column;
@@ -1378,6 +1397,8 @@ select option {
   align-items: stretch;
   justify-content: center;
   padding: 12px;
+  width: 100%;
+  max-width: 400px;
 }
 
 .word-card {

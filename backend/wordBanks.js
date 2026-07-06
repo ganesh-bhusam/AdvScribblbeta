@@ -144,9 +144,17 @@ const WORD_BANKS = {
   8: { code: 'malayalaglish', name: 'Malayalaglish', words: MALAYALAGLISH },
 };
 
-// Movie Word Banks (Placeholders to be filled later by the user)
+// Movie Word Banks (Placeholders for movies in each language)
 const MOVIE_BANKS = {
   0: { code: 'english_movies', name: 'English Movies', words: ['the matrix', 'avatar', 'inception', 'titanic', 'jurassic park'] },
+  1: { code: 'hinglish_movies', name: 'Hinglish Movies', words: ['sholay', 'dangal', '3 idiots', 'lagaan', 'kabhi khushi kabhie gham'] },
+  2: { code: 'tamiglish_movies', name: 'Tamiglish Movies', words: ['vikram', 'baahubali', 'enthiran', 'master', 'ps1'] },
+  3: { code: 'teluglish_movies', name: 'Teluglish Movies', words: ['baahubali', 'pushpa', 'rrr', 'magadheera', 'ala vaikunthapurramuloo'] },
+  4: { code: 'benglish_movies', name: 'Benglish Movies', words: ['pather panchali', 'bhooter bhobishyot', 'belasheshe', 'prakton', 'chander pahar'] },
+  5: { code: 'marathiglish_movies', name: 'Marathiglish Movies', words: ['sairat', 'natarang', 'fastey feni', 'nude', 'killa'] },
+  6: { code: 'gujaratinglish_movies', name: 'Gujaratinglish Movies', words: ['chhello divas', 'gujjubhai the great', 'chal jeevi laiye', 'shu thayu', 'hellaro'] },
+  7: { code: 'kannadaglish_movies', name: 'Kannadaglish Movies', words: ['kgf', 'kantara', 'mungaru male', 'ugramm', 'lucia'] },
+  8: { code: 'malayalaglish_movies', name: 'Malayalaglish Movies', words: ['drishyam', 'premam', 'kumbalangi nights', 'bheeshma parvam', 'lucifer'] },
 };
 
 // --- DYNAMICALLY LOAD NEW WORD BANKS ---
@@ -198,14 +206,20 @@ function getLanguageList() {
 }
 
 function getWords(langId, count = 3, modeId = 'all') {
-  let bank = WORD_BANKS[langId] || WORD_BANKS[0];
-  if (modeId === 'movies' && MOVIE_BANKS[langId]) {
-    bank = MOVIE_BANKS[langId];
+  let standardWords = WORD_BANKS[langId]?.words || WORD_BANKS[0].words;
+  let movieWords = MOVIE_BANKS[langId]?.words || MOVIE_BANKS[0].words;
+  
+  let pool = standardWords;
+  if (modeId === 'movies') {
+    pool = movieWords;
+  } else if (modeId === 'all') {
+    // Mix mode!
+    pool = [...standardWords, ...movieWords];
   }
-  const words = bank.words;
+  
   const picks = new Set();
-  while (picks.size < count && picks.size < words.length) {
-    picks.add(words[Math.floor(Math.random() * words.length)]);
+  while (picks.size < count && picks.size < pool.length) {
+    picks.add(pool[Math.floor(Math.random() * pool.length)]);
   }
   return Array.from(picks);
 }

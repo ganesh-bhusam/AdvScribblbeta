@@ -98,11 +98,15 @@ app.get('/api/health',   (req, res) => res.json({ ok: true }));
 app.get('/api/languages',(req, res) => res.json({ languages: getLanguageList() }));
 
 // GET /api/admin/stats - application analytics (Phase 5)
-app.get('/api/admin/stats', (req, res) => {
+app.get('/api/admin/stats', async (req, res) => {
   try {
-    const totalUsers = q.statsTotalUsers.get()?.count || 0;
-    const premiumUsers = q.statsPremiumUsers.get()?.count || 0;
-    const totalRevenue = q.statsTotalRevenue.get('captured')?.total || 0;
+    const totalUsersObj = await q.statsTotalUsers();
+    const premiumUsersObj = await q.statsPremiumUsers();
+    const totalRevenueObj = await q.statsTotalRevenue('captured');
+
+    const totalUsers = totalUsersObj?.count || 0;
+    const premiumUsers = premiumUsersObj?.count || 0;
+    const totalRevenue = totalRevenueObj?.total || 0;
     
     // Live game stats
     const allRooms = Array.from(engine.rooms.values());
@@ -114,6 +118,7 @@ app.get('/api/admin/stats', (req, res) => {
       live: { activeRooms, activePlayers }
     });
   } catch (err) {
+    console.error('[stats]', err);
     res.status(500).json({ error: 'Failed to retrieve stats' });
   }
 });
@@ -163,12 +168,12 @@ const io = new Server(server, {
 const engine = new GameEngine(io);
 
 // ===================== SOCKET AUTH MIDDLEWARE =====================
-io.use((socket, next) => {
+io.use(async (socket, next) => {
   const token = socket.handshake.auth?.token;
   if (!token) return next(new Error('AUTH_REQUIRED'));
   try {
     const payload = jwt.verify(token, JWT_SECRET);
-    const user = q.findUserById.get(payload.uid);
+    const user = await q.findUserById(payload.uid);
     if (!user) return next(new Error('USER_NOT_FOUND'));
     socket.userId   = user.id;
     socket.username = user.username;
@@ -372,23 +377,45 @@ process.on('SIGINT',  () => shutdown('SIGINT'));
 /* ---------- static HTML pages ---------- */
 const SUPPORT = process.env.SUPPORT_EMAIL || 'support@advscribbl.app';
 
-const TERMS_HTML = `<!doctype html><html><head><meta charset="utf-8"><title>Terms of Service — AdvScribbl</title>
-<style>body{font-family:'Outfit',system-ui,sans-serif;background:#0D0D12;color:#fff;max-width:760px;margin:0 auto;padding:48px 24px;line-height:1.7}
-h1{font-weight:800;letter-spacing:-0.02em}h2{color:#6366F1;margin-top:32px}a{color:#FFD700}</style></head>
-<body><h1>Terms of Service</h1>
-<p>By using AdvScribbl (the "Service") you agree to these terms. The Service is a multiplayer drawing &amp; guessing game provided "as is". You are responsible for the content you draw and the messages you send.</p>
-<h2>1. Acceptable Use</h2><p>No hate speech, harassment, illegal content, or attempts to disrupt the Service. Repeat violators will be banned.</p>
-<h2>2. Premium Purchases</h2><p>The ₹25 Premium upgrade grants lifetime access to the premium color palette and removes ads for 6 months. Purchases are processed by Razorpay and are non-refundable except where required by law.</p>
-<h2>3. Account Recovery</h2><p>If you forget your password, email <a href="mailto:${SUPPORT}">${SUPPORT}</a> from your registered address along with your Razorpay receipt (if Premium). We verify and reset manually.</p>
-<h2>4. Liability</h2><p>The Service is offered without warranty. We are not liable for user-generated content or service interruptions.</p>
-<p><a href="/">← back to game</a></p></body></html>`;
+const TERMS_HTML = `<!doctype html><html><head><meta charset="utf-8"><title>Terms of Service - AdvScribbl</title>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Outfit:wght@400;600;800;900&family=Patrick+Hand&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/style.css">
+<style>body{font-family:'Outfit',system-ui,sans-serif;background:#0D0D12;color:#fff;max-width:1000px;margin:40px auto;padding:0 24px;line-height:1.7}h2{color:#6366F1;margin-top:32px;margin-bottom:12px;font-size:1.5rem}a{color:#FFD700}</style></head>
+<body>
+<div class="info-page-container">
+  <div class="glass-panel" style="background: transparent; border-color: rgba(255, 255, 255, 0.2); width: 100%; display: flex; flex-direction: row; gap: 40px; padding: 40px; text-align: left; flex-wrap: wrap;">
+    <div style="flex: 1; min-width: 200px;">
+      <a href="/" class="btn btn-play-blue back-btn" style="display:inline-block; margin-bottom: 20px;">← Back to Home</a>
+      <h1 style="text-align: left; margin: 0; line-height: 1.2; color: var(--accent-gold); font-size: 2.5rem; text-shadow: 0 2px 4px rgba(0,0,0,0.5);">Terms of<br>Service</h1>
+    </div>
+    <div class="info-page-content" style="flex: 2; min-width: 300px; padding: 0;">
+      <p style="margin-top:0;">By using AdvScribbl (the "Service") you agree to these terms. The Service is a multiplayer drawing &amp; guessing game provided "as is". You are responsible for the content you draw and the messages you send.</p>
+      <h2 style="margin-top:0;">1. Acceptable Use</h2><p>No hate speech, harassment, illegal content, or attempts to disrupt the Service. Repeat violators will be banned.</p>
+      <h2>2. Premium Purchases</h2><p>The ₹25 Premium upgrade grants lifetime access to the premium color palette and removes ads for 6 months. Purchases are processed by Razorpay and are non-refundable except where required by law.</p>
+      <h2>3. Account Recovery</h2><p>If you forget your password, email <a href="mailto:${SUPPORT}">${SUPPORT}</a> from your registered address along with your Razorpay receipt (if Premium). We verify and reset manually.</p>
+      <h2>4. Liability</h2><p>The Service is offered without warranty. We are not liable for user-generated content or service interruptions.</p>
+    </div>
+  </div>
+</div>
+</body></html>`;
 
-const CREDITS_HTML = `<!doctype html><html><head><meta charset="utf-8"><title>Credits — AdvScribbl</title>
-<style>body{font-family:'Outfit',system-ui,sans-serif;background:#0D0D12;color:#fff;max-width:760px;margin:0 auto;padding:48px 24px;line-height:1.7}
-h1{font-weight:800;letter-spacing:-0.02em}h2{color:#6366F1;margin-top:32px}a{color:#FFD700}ul{padding-left:20px}</style></head>
-<body><h1>Credits</h1>
-<p>AdvScribbl is a modernized clone of skribbl.io, designed and built with love.</p>
-<h2>Original Inspiration</h2><ul><li>skribbl.io by Mel — for the original gameplay and visual language</li></ul>
-<h2>Open Source</h2><ul><li>Socket.io — real-time multiplayer transport</li><li>Express — HTTP server</li><li>JSON flat-file DB — lightweight persistence</li><li>bcryptjs, jsonwebtoken — authentication</li><li>Razorpay — payments</li></ul>
-<h2>Sound</h2><ul><li>UI sound effects sourced from the original game assets.</li></ul>
-<p><a href="/">← back to game</a></p></body></html>`;
+const CREDITS_HTML = `<!doctype html><html><head><meta charset="utf-8"><title>Credits - AdvScribbl</title>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Outfit:wght@400;600;800;900&family=Patrick+Hand&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/style.css">
+<style>body{font-family:'Outfit',system-ui,sans-serif;background:#0D0D12;color:#fff;max-width:1000px;margin:40px auto;padding:0 24px;line-height:1.7}h2{color:#6366F1;margin-top:32px;margin-bottom:12px;font-size:1.5rem}a{color:#FFD700}ul{padding-left:20px;margin-top:0}</style></head>
+<body>
+<div class="info-page-container">
+  <div class="glass-panel" style="background: transparent; border-color: rgba(255, 255, 255, 0.2); width: 100%; display: flex; flex-direction: row; gap: 40px; padding: 40px; text-align: left; flex-wrap: wrap;">
+    <div style="flex: 1; min-width: 200px;">
+      <a href="/" class="btn btn-play-blue back-btn" style="display:inline-block; margin-bottom: 20px;">← Back to Home</a>
+      <h1 style="text-align: left; margin: 0; line-height: 1.2; color: var(--accent-gold); font-size: 2.5rem; text-shadow: 0 2px 4px rgba(0,0,0,0.5);">Credits</h1>
+    </div>
+    <div class="info-page-content" style="flex: 2; min-width: 300px; padding: 0;">
+      <p style="margin-top:0;">AdvScribbl is a modernized clone of skribbl.io, designed and built with love.</p>
+      <h2 style="margin-top:0;">Original Inspiration</h2><ul><li>skribbl.io by Mel - for the original gameplay and visual language</li></ul>
+      <h2>Open Source</h2><ul><li>Socket.io - real-time multiplayer transport</li><li>Express - HTTP server</li><li>JSON flat-file DB - lightweight persistence</li><li>bcryptjs, jsonwebtoken - authentication</li><li>Razorpay - payments</li></ul>
+      <h2>Sound</h2><ul><li>UI sound effects sourced from the original game assets.</li></ul>
+    </div>
+  </div>
+</div>
+</body></html>`;
