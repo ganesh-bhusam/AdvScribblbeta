@@ -145,10 +145,12 @@
 
   // ============================ HOME ============================
   function updateHomeUI() {
-    const name = $('login-name').value.trim();
-    $('welcome-text').innerHTML = name
-      ? `Hi <b>${escapeHTML(name)}</b>`
-      : `Welcome! <b>Enter your name</b> to play.`;
+    let name = $('login-name').value;
+    if (!name) {
+      name = 'Guest';
+    }
+    $('welcome-text').innerHTML = `Hi <b>${escapeHTML(name)}</b>`;
+    // Removed the auto-fill logic so the input remains empty
   }
 
   function setAvatar(idx) {
@@ -177,8 +179,7 @@
   const MAX_RECONNECT = 5;
 
   function connectAndJoin(opts) {
-    const playerName = ($('login-name').value || '').trim();
-    if (!playerName) { toast('Enter a name first', 'error'); return; }
+    const playerName = ($('login-name').value || '').trim() || 'Player';
     if (socket) { try { socket.disconnect(); } catch (_) { /* noop */ } socket = null; }
     reconnectAttempts = 0;
     socket = io(window.ENV.API || undefined, {
@@ -928,7 +929,7 @@
 
     if (!usePremium && tool === 'rainbow') {
       tool = 'pencil';
-      document.querySelectorAll('#tool-buttons .tool-btn').forEach((x) => x.classList.toggle('active', x.dataset.tool === 'pencil'));
+      document.querySelectorAll('#tool-buttons .tool-btn:not(#tool-cursor-toggle)').forEach((x) => x.classList.toggle('active', x.dataset.tool === 'pencil'));
     }
   }
 
@@ -986,21 +987,15 @@
   }
 
   // ============================ TOOLS / SIZES ============================
-  // Cursor toggle is now in the game-bar (always visible to all players)
-  const cursorToggleBtn = $('tool-cursor-toggle');
-  if (cursorToggleBtn) {
-    cursorToggleBtn.classList.add('active'); // default: custom cursor ON
-    cursorToggleBtn.addEventListener('click', () => {
-      customCursorEnabled = !customCursorEnabled;
-      cursorToggleBtn.style.opacity = customCursorEnabled ? '1' : '0.45';
-      cursorToggleBtn.title = customCursorEnabled ? 'Custom Cursor: ON' : 'Custom Cursor: OFF';
-      updateCanvasCursor();
-    });
-  }
-
   document.querySelectorAll('#tool-buttons .tool-btn').forEach((b) => {
     b.addEventListener('click', () => {
-      document.querySelectorAll('#tool-buttons .tool-btn').forEach((x) => x.classList.remove('active'));
+      if (b.id === 'tool-cursor-toggle') {
+        customCursorEnabled = !customCursorEnabled;
+        b.classList.toggle('active', customCursorEnabled);
+        updateCanvasCursor();
+        return;
+      }
+      document.querySelectorAll('#tool-buttons .tool-btn:not(#tool-cursor-toggle)').forEach((x) => x.classList.remove('active'));
       document.querySelectorAll('.shape-btn').forEach((x) => x.classList.remove('active'));
       b.classList.add('active');
       tool = b.dataset.tool;
@@ -1609,7 +1604,7 @@
       b.addEventListener('click', (ev) => {
         ev.preventDefault();
         document.querySelectorAll('.shape-btn').forEach(x => x.classList.remove('active'));
-        document.querySelectorAll('#tool-buttons .tool-btn').forEach(x => x.classList.remove('active'));
+        document.querySelectorAll('#tool-buttons .tool-btn:not(#tool-cursor-toggle)').forEach(x => x.classList.remove('active'));
         b.classList.add('active');
         tool = 'shape';
         updateCanvasCursor();
@@ -1630,16 +1625,7 @@
     const qs = new URLSearchParams(window.location.search);
     const r = extractRoomId(qs.get('room'));
     if (r) {
-      // Pre-fill the room code input so user can see it
-      if ($('login-room')) $('login-room').value = r;
-      // Only auto-join if they already have a name typed
-      const existingName = $('login-name').value.trim();
-      if (existingName) {
-        connectAndJoin({ join: r });
-      } else {
-        // Show them a toast to enter name first
-        toast('Enter your name to join the room!', 'info');
-      }
+      connectAndJoin({ join: r });
     }
   });
   document.addEventListener('premium:unlocked', updateHomeUI);
