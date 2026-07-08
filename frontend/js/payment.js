@@ -83,7 +83,7 @@
 
         // Generate dynamic QR Code
         const cfg = await getUpiConfig();
-        const upiUrl = `upi://pay?pa=${encodeURIComponent(cfg.upiId)}&pn=${encodeURIComponent(cfg.upiName)}&am=${cfg.amount}&cu=INR&tn=AdvScribblPremium-${lockedUsername}`;
+        const upiUrl = `upi://pay?pa=${encodeURIComponent(cfg.upiId)}&pn=${encodeURIComponent(cfg.upiName)}&am=${cfg.amount}&cu=INR&tn=AdvScribblPremium`;
         const qrContainer = document.getElementById('upi-qrcode-container');
         if (qrContainer) {
           qrContainer.innerHTML = '';
@@ -118,7 +118,7 @@
   // When step 2 shows, build the UPI links
   document.getElementById('upi-pay-btn')?.addEventListener('click', async () => {
     const cfg = await getUpiConfig();
-    const upiUrl = `upi://pay?pa=${encodeURIComponent(cfg.upiId)}&pn=${encodeURIComponent(cfg.upiName)}&am=${cfg.amount}&cu=INR&tn=AdvScribblPremium-${lockedUsername}`;
+    const upiUrl = `upi://pay?pa=${encodeURIComponent(cfg.upiId)}&pn=${encodeURIComponent(cfg.upiName)}&am=${cfg.amount}&cu=INR&tn=AdvScribblPremium`;
     window.location.href = upiUrl;
   });
 
