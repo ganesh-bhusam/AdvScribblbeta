@@ -3790,3 +3790,69 @@ body.premium-cursor #game-canvas.tool-fill canvas { cursor: url("data:image/svg+
 .player-card.drawer {
   animation: pulse-glow 2s infinite ease-in-out;
 }
+
+/* =================== UPI PAYMENT MODAL =================== */
+.modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+.modal .payment-card {
+  position: relative;
+  width: 100%;
+  max-width: 480px;
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: 32px;
+  box-sizing: border-box;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(99,102,241,0.4) transparent;
+}
+
+.modal .payment-card h2 {
+  margin: 0 0 8px;
+  font-size: 1.4rem;
+}
+
+.modal .payment-card .lead {
+  color: rgba(255,255,255,0.7);
+  margin: 0 0 16px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.modal .payment-card .benefits {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 16px;
+}
+
+.modal .payment-card .benefits li {
+  padding: 6px 0;
+  color: rgba(255,255,255,0.8);
+  font-size: 14px;
+}
+
+.premium-crown {
+  font-size: 40px;
+  margin-bottom: 8px;
+  display: block;
+}
+
+/* UTR status messages */
+.utr-status {
+  font-size: 13px;
+  font-weight: 600;
+  min-height: 20px;
+}
+
+.utr-status.success { color: #22c55e; }
+.utr-status.error   { color: #ef4444; }

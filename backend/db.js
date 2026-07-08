@@ -7,25 +7,12 @@ const pool = new Pool({
 
 const initDb = async () => {
   await pool.query(`
-    CREATE TABLE IF NOT EXISTS users (
+    CREATE TABLE IF NOT EXISTS locked_usernames (
       id SERIAL PRIMARY KEY,
-      name VARCHAR(255) NOT NULL,
-      username VARCHAR(255) UNIQUE NOT NULL,
-      email VARCHAR(255) UNIQUE NOT NULL,
-      password_hash VARCHAR(255) NOT NULL,
-      has_premium INTEGER DEFAULT 0,
-      ad_free_until VARCHAR(255),
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    );
-
-    CREATE TABLE IF NOT EXISTS payments (
-      id SERIAL PRIMARY KEY,
-      user_id INTEGER NOT NULL REFERENCES users(id),
-      razorpay_order_id VARCHAR(255) NOT NULL,
-      razorpay_payment_id VARCHAR(255),
-      amount INTEGER NOT NULL,
-      status VARCHAR(50) NOT NULL,
-      is_mock INTEGER DEFAULT 0,
+      username VARCHAR(100) UNIQUE NOT NULL,
+      utr_number VARCHAR(20) NOT NULL,
+      status VARCHAR(20) DEFAULT 'pending',
+      approved_at TIMESTAMP,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
   `);
@@ -35,55 +22,79 @@ const initDb = async () => {
 initDb().catch(console.error);
 
 const q = {
-  findUserByUsername: async (username) => {
-    const res = await pool.query('SELECT * FROM users WHERE username = $1', [username]);
-    return res.rows[0];
-  },
-  findUserByEmail: async (email) => {
-    const res = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
-    return res.rows[0];
-  },
-  findUserById: async (id) => {
-    const res = await pool.query('SELECT * FROM users WHERE id = $1', [id]);
-    return res.rows[0];
-  },
-  insertUser: async (name, username, email, passwordHash) => {
+  // Check if a username has approved premium
+  isUsernamePremium: async (username) => {
     const res = await pool.query(
-      'INSERT INTO users (name, username, email, password_hash) VALUES ($1, $2, $3, $4) RETURNING id',
-      [name, username, email, passwordHash]
+      'SELECT id FROM locked_usernames WHERE LOWER(username) = LOWER($1) AND status = $2',
+      [username, 'approved']
+    );
+    return res.rows.length > 0;
+  },
+
+  // Check if username is already locked/pending (taken)
+  isUsernameLocked: async (username) => {
+    const res = await pool.query(
+      'SELECT id, status FROM locked_usernames WHERE LOWER(username) = LOWER($1)',
+      [username]
+    );
+    return res.rows[0] || null;
+  },
+
+  // Check if UTR already used by someone else
+  findUTRDuplicate: async (utr) => {
+    const res = await pool.query(
+      'SELECT username FROM locked_usernames WHERE utr_number = $1',
+      [utr]
+    );
+    return res.rows[0] || null;
+  },
+
+  // Submit UTR for a username (creates pending entry)
+  submitUTR: async (username, utrNumber) => {
+    await pool.query(
+      'INSERT INTO locked_usernames (username, utr_number, status) VALUES (LOWER($1), $2, $3)',
+      [username, utrNumber, 'pending']
+    );
+  },
+
+  // Admin: approve a username
+  approveUsername: async (username) => {
+    const res = await pool.query(
+      "UPDATE locked_usernames SET status = 'approved', approved_at = NOW() WHERE LOWER(username) = LOWER($1) RETURNING *",
+      [username]
     );
     return res.rows[0];
   },
-  grantPremium: async (adFreeUntil, userId) => {
-    await pool.query('UPDATE users SET has_premium = 1, ad_free_until = $1 WHERE id = $2', [adFreeUntil, userId]);
-  },
-  insertPayment: async (userId, orderId, amount, status, isMock) => {
-    await pool.query(
-      'INSERT INTO payments (user_id, razorpay_order_id, amount, status, is_mock) VALUES ($1, $2, $3, $4, $5)',
-      [userId, orderId, amount, status, isMock]
+
+  // Admin: get all pending UTRs
+  getAllPending: async () => {
+    const res = await pool.query(
+      "SELECT username, utr_number, created_at FROM locked_usernames WHERE status = 'pending' ORDER BY created_at DESC"
     );
+    return res.rows;
   },
-  completePayment: async (paymentId, status, orderId) => {
-    await pool.query(
-      'UPDATE payments SET razorpay_payment_id = $1, status = $2 WHERE razorpay_order_id = $3',
-      [paymentId, status, orderId]
+
+  // Admin: get all approved usernames
+  getAllApproved: async () => {
+    const res = await pool.query(
+      "SELECT username, utr_number, approved_at FROM locked_usernames WHERE status = 'approved' ORDER BY approved_at DESC"
     );
+    return res.rows;
   },
-  statsTotalUsers: async () => {
-    const res = await pool.query('SELECT COUNT(*) as count FROM users');
+
+  // Stats
+  statsTotalLocked: async () => {
+    const res = await pool.query('SELECT COUNT(*) as count FROM locked_usernames');
     return res.rows[0];
   },
   statsPremiumUsers: async () => {
-    const res = await pool.query('SELECT COUNT(*) as count FROM users WHERE has_premium = 1');
+    const res = await pool.query("SELECT COUNT(*) as count FROM locked_usernames WHERE status = 'approved'");
     return res.rows[0];
   },
-  statsTotalRevenue: async (status) => {
-    const res = await pool.query('SELECT SUM(amount) as total FROM payments WHERE status = $1', [status]);
+  statsTotalRevenue: async () => {
+    const res = await pool.query("SELECT COUNT(*) * 20 as total FROM locked_usernames WHERE status = 'approved'");
     return res.rows[0];
   }
 };
 
-module.exports = {
-  pool,
-  q
-};
+module.exports = { pool, q };

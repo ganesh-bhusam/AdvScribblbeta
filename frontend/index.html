@@ -24,7 +24,7 @@
   <link rel="stylesheet" href="/css/style.css">
 
   <!-- SDKs and client-side dependencies -->
-  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+  <!-- Socket.IO only (Razorpay removed) -->
   <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
 
   <!-- Local environment configurations -->
@@ -40,84 +40,9 @@
   <!-- Static illustrated background (user-uploaded doodle pattern) -->
   <div id="bg-illustration" aria-hidden="true"></div>
 
-  <!-- =================== AUTH OVERLAY (Sign In & Sign Up Screen) =================== -->
-  <div id="auth-overlay" class="active" data-testid="auth-overlay">
-    <!-- Main authentication container card styled with wood borders and screws -->
-    <div class="auth-card glass-panel" data-testid="auth-card">
-      <!-- Decorative corner screws -->
-      <div class="screw tl"></div>
-      <div class="screw tr"></div>
-      <div class="screw bl"></div>
-      <div class="screw br"></div>
-
-      <!-- Brand Logo / Header block -->
-      <div class="auth-brand">
-        <h1 class="brand-title rainbow-logo" data-testid="auth-brand-logo">
-          <span style="color:#FF1F1F">A</span><span style="color:#FF7A00">d</span><span
-            style="color:#FFD200">v</span><span style="color:#1FBF3B">S</span><span style="color:#00B7E0">c</span><span
-            style="color:#1F4FE0">r</span><span style="color:#7A2CE0">i</span><span style="color:#C71FA8">b</span><span
-            style="color:#E0257A">b</span><span style="color:#E0451F">l</span>
-        </h1>
-        <p class="brand-tag">draw. guess. dominate.</p>
-      </div>
-
-      <!-- Sign In / Sign Up tab controls -->
-      <div class="auth-tabs" role="tablist">
-        <button class="auth-tab active" data-tab="login" data-testid="auth-tab-login">Sign In</button>
-        <button class="auth-tab" data-tab="signup" data-testid="auth-tab-signup">Sign Up</button>
-      </div>
-
-      <!-- Form block: Sign In / Login credentials -->
-      <form id="login-form" class="auth-form active" autocomplete="off" data-testid="login-form">
-        <label class="field">
-          <span class="field-label">Username</span>
-          <input type="text" id="login-username" placeholder="picasso_99" required minlength="3" maxlength="21"
-            data-testid="login-username-input">
-        </label>
-        <label class="field">
-          <span class="field-label">Password</span>
-          <input type="password" id="login-password" placeholder="••••••••" required minlength="6"
-            data-testid="login-password-input">
-        </label>
-        <!-- Container for login failure validation errors -->
-        <div class="auth-error" id="login-error" data-testid="login-error"></div>
-        <button type="submit" class="btn btn-primary" data-testid="login-submit-button">Enter Game →</button>
-        <button type="button" class="auth-link" id="forgot-link" data-testid="forgot-password-link">Forgot password?
-          Need help?</button>
-      </form>
-
-      <!-- Form block: Sign Up / Register new credentials -->
-      <form id="signup-form" class="auth-form" autocomplete="off" data-testid="signup-form">
-        <div class="row-2">
-          <label class="field">
-            <span class="field-label">Full Name</span>
-            <input type="text" id="signup-name" placeholder="Alex Morgan" required minlength="2" maxlength="40"
-              data-testid="signup-name-input">
-          </label>
-          <label class="field">
-            <span class="field-label">Username</span>
-            <input type="text" id="signup-username" placeholder="picasso_99" required minlength="3" maxlength="21"
-              data-testid="signup-username-input">
-          </label>
-        </div>
-        <label class="field">
-          <span class="field-label">Email</span>
-          <input type="email" id="signup-email" placeholder="you@example.com" required data-testid="signup-email-input">
-        </label>
-        <label class="field">
-          <span class="field-label">Password</span>
-          <input type="password" id="signup-password" placeholder="6+ characters" required minlength="6"
-            data-testid="signup-password-input">
-        </label>
-        <!-- Container for sign up validation errors -->
-        <div class="auth-error" id="signup-error" data-testid="signup-error"></div>
-        <button type="submit" class="btn btn-primary" data-testid="signup-submit-button">Create Account →</button>
-      </form>
-    </div>
-  </div>
 
   <!-- =================== HOME (Lobby Setup & Navigation Bar) =================== -->
-  <div id="home" style="display:none">
+  <div id="home">
     <!-- Home screen top header: Title and session actions -->
     <header class="home-header">
       <h1 class="logo-text rainbow-logo" data-testid="home-logo">
@@ -129,10 +54,8 @@
       <div class="header-actions">
         <span class="welcome-text" id="welcome-text" data-testid="welcome-text"></span>
         <button class="btn btn-ghost" id="button-unlock-premium" data-testid="home-premium-button">
-          <span class="prem-icon">★</span> Unlock Premium
+          <span class="prem-icon">🔒</span> Lock Username + Premium Colors
         </button>
-        <button class="btn btn-ghost icon-btn" id="logout-btn" title="Log out" data-testid="logout-button"
-          aria-label="Log out">⎋</button>
       </div>
     </header>
 
@@ -264,7 +187,7 @@
           <li>Premium glass-morphism UI with floating cards</li>
           <li>MS Paint-style toolset (Pencil, Bucket, Line, Rect, Circle, Eraser)</li>
           <li>Romanized Indian languages (Hinglish, Tamiglish, Teluglish…)</li>
-          <li>Premium color palette unlocked via Razorpay</li>
+          <li>🔒 Lock your username + unlock 26 premium colors for just ₹20</li>
           <li>Classic 8 colored character avatars</li>
         </ul>
       </div>
@@ -544,32 +467,79 @@
     </div>
   </div>
 
-  <!-- =================== PREMIUM MODAL (Unlock Features Popup Dialog) =================== -->
-  <div id="premium-modal" class="modal-backdrop" style="display:none" data-testid="premium-modal">
-    <!-- Payment details card with wood theme details -->
-    <div class="payment-card glass-panel">
+  <!-- =================== PREMIUM MODAL (UPI Payment Flow) =================== -->
+  <div class="modal" id="premium-modal" data-testid="premium-modal" style="display:none">
+    <div class="payment-card glass-panel" style="max-width:480px;width:100%;">
       <div class="screw tl"></div>
       <div class="screw tr"></div>
       <div class="screw bl"></div>
       <div class="screw br"></div>
-      <!-- Close modal icon button -->
-      <button class="modal-close" id="premium-close" data-testid="premium-modal-close" aria-label="Close">×</button>
-      <div class="premium-crown">★</div>
-      <h2>Unlock AdvScribbl Premium</h2>
-      <p class="lead">Lifetime access to <b>26 premium colors</b> + <b>6 months ad-free</b> gameplay for just</p>
-      <!-- Premium price tag values display -->
-      <div class="price-tag">₹25</div>
-      <!-- List of benefits features checklist -->
-      <ul class="benefits">
-        <li>✓ 26 exclusive premium colors</li>
-        <li>✓ 6 months ad-free experience</li>
-        <li>✓ Premium badge next to your name</li>
-        <li>✓ Support indie game development</li>
-      </ul>
-      <button class="btn btn-primary btn-pay" id="premium-pay-btn" data-testid="premium-pay-button">Pay ₹25 via
-        Razorpay</button>
-      <!-- Feedback logs or security annotations note -->
-      <p class="payment-note" id="payment-note"></p>
+      <button class="modal-close" id="premium-close" aria-label="Close">×</button>
+
+      <!-- STEP 1: Pick & check username -->
+      <div id="upi-step1">
+        <div class="premium-crown">🔒</div>
+        <h2>Lock Your Username</h2>
+        <p class="lead">Lock your unique username and get <b>26 premium colors</b> for just <span class="upi-amount">₹20</span> (one-time)</p>
+        <ul class="benefits">
+          <li>✓ 26 exclusive premium colors every game</li>
+          <li>✓ Your username is permanently yours</li>
+          <li>✓ ⭐ Premium badge next to your name</li>
+          <li>✓ Support indie development</li>
+        </ul>
+        <div style="margin-top:16px;">
+          <input id="upi-username-input" type="text" class="join-input wood-input" placeholder="Enter your desired username" maxlength="21" style="width:100%;box-sizing:border-box;margin-bottom:10px;">
+          <button id="upi-check-btn" class="btn btn-primary" style="width:100%;">Check Availability →</button>
+          <p id="upi-check-result" class="utr-status" style="margin-top:10px;text-align:center;"></p>
+        </div>
+      </div>
+
+      <!-- STEP 2: Pay ₹20 -->
+      <div id="upi-step2" style="display:none;">
+        <div class="premium-crown">💰</div>
+        <h2>Pay <span class="upi-amount">₹20</span> for <span id="upi-step2-username" style="color:#6366F1;"></span></h2>
+        <p class="lead">Scan the QR code or tap the button below to pay</p>
+
+        <!-- QR Code (desktop) -->
+        <div id="upi-qr-section" style="text-align:center;margin:16px 0;">
+          <img src="/img/payment-qr.png" alt="Scan to Pay ₹20 via UPI"
+            style="width:200px;height:200px;border-radius:12px;border:3px solid rgba(99,102,241,0.5);">
+          <p style="font-size:13px;color:rgba(255,255,255,0.6);margin-top:8px;">Scan with GPay · PhonePe · Paytm · Any UPI app</p>
+        </div>
+
+        <!-- UPI Intent button (mobile) -->
+        <button id="upi-pay-btn" class="btn btn-play-green" style="width:100%;display:none;font-size:16px;padding:14px;"></button>
+
+        <p style="font-size:13px;color:rgba(255,255,255,0.5);margin:12px 0;text-align:center;">After paying, click below to enter your reference number</p>
+        <button id="upi-paid-btn" class="btn btn-primary" style="width:100%;">✅ I've Paid — Enter UTR Number →</button>
+      </div>
+
+      <!-- STEP 3: Submit UTR -->
+      <div id="upi-step3" style="display:none;">
+        <div class="premium-crown">🧾</div>
+        <h2>Enter Your UTR Number</h2>
+        <p class="lead">Find the 12-digit UTR / Reference number in your UPI app under transaction history</p>
+        <div style="margin-top:16px;">
+          <input id="upi-utr-input" type="tel" inputmode="numeric" class="join-input wood-input"
+            placeholder="e.g. 123456789012" maxlength="12" pattern="[0-9]{12}"
+            style="width:100%;box-sizing:border-box;margin-bottom:10px;letter-spacing:2px;font-size:18px;">
+          <button id="upi-submit-utr-btn" class="btn btn-primary" style="width:100%;">✅ Submit UTR</button>
+          <p id="utr-submit-status" class="utr-status" style="margin-top:10px;text-align:center;"></p>
+        </div>
+        <p style="font-size:12px;color:rgba(255,255,255,0.4);margin-top:16px;text-align:center;">We'll verify your payment within 2 hours and send you a confirmation.</p>
+      </div>
+
+      <!-- STEP 4: Success / Pending -->
+      <div id="upi-success" style="display:none;text-align:center;">
+        <div style="font-size:64px;margin:16px 0;">⏳</div>
+        <h2 style="color:#FFD700;">UTR Submitted!</h2>
+        <p class="lead">We received your UTR for <b>@<span id="upi-success-name"></span></b>.</p>
+        <p style="color:rgba(255,255,255,0.7);font-size:14px;">Our team will verify your ₹20 payment and unlock your premium colors within <b>2 hours</b>. Just come back and type your locked username to get your colors!</p>
+        <div style="background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.3);border-radius:12px;padding:16px;margin:16px 0;">
+          <p style="margin:0;font-size:13px;color:rgba(255,255,255,0.6);">📧 Questions? Email us at <a href="mailto:support@advscribbl.app" style="color:#6366F1;">support@advscribbl.app</a></p>
+        </div>
+        <button id="upi-success-close" class="btn btn-primary" style="width:100%;">Got it! 👍</button>
+      </div>
     </div>
   </div>
 

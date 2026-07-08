@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AdvScribbl — Admin Panel</title>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    body { font-family: 'Outfit', system-ui, sans-serif; background: #0D0D12; color: #fff; margin: 0; padding: 20px; }
+    .admin-wrap { max-width: 900px; margin: 0 auto; }
+    h1 { color: var(--accent-gold, #FFD700); margin-bottom: 4px; }
+    .login-box { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; padding: 32px; max-width: 400px; margin: 80px auto; }
+    .login-box input { width: 100%; box-sizing: border-box; padding: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.07); color: #fff; font-size: 16px; margin-bottom: 12px; }
+    .badge { display: inline-block; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 700; }
+    .badge.pending  { background: rgba(234,179,8,0.2);  color: #EAB308; border: 1px solid rgba(234,179,8,0.4); }
+    .badge.approved { background: rgba(34,197,94,0.2);  color: #22c55e; border: 1px solid rgba(34,197,94,0.4); }
+    table { width: 100%; border-collapse: collapse; margin-top: 16px; }
+    th { text-align: left; padding: 12px; color: rgba(255,255,255,0.5); font-size: 13px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+    td { padding: 12px; border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 14px; }
+    tr:hover td { background: rgba(255,255,255,0.03); }
+    .utr-mono { font-family: monospace; font-size: 16px; color: #22c55e; letter-spacing: 1px; }
+    .approve-btn { background: #6366F1; color: #fff; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-weight: 700; font-size: 13px; }
+    .approve-btn:hover { background: #4f46e5; }
+    .approve-btn:disabled { background: #333; color: #666; cursor: default; }
+    .panel { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; padding: 24px; margin-bottom: 24px; }
+    .stat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 16px; margin-top: 16px; }
+    .stat-card { background: rgba(99,102,241,0.1); border: 1px solid rgba(99,102,241,0.3); border-radius: 12px; padding: 16px; text-align: center; }
+    .stat-card .num { font-size: 32px; font-weight: 900; color: #6366F1; }
+    .stat-card .label { font-size: 13px; color: rgba(255,255,255,0.5); margin-top: 4px; }
+    .msg { padding: 12px; border-radius: 8px; margin-top: 12px; font-size: 13px; }
+    .msg.success { background: rgba(34,197,94,0.1); color: #22c55e; border: 1px solid rgba(34,197,94,0.3); }
+    .msg.error   { background: rgba(239,68,68,0.1);  color: #ef4444; border: 1px solid rgba(239,68,68,0.3); }
+    #auth-section { display: block; }
+    #main-section { display: none; }
+    .tab-btns { display: flex; gap: 8px; margin-bottom: 16px; }
+    .tab-btn { background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.1); color: rgba(255,255,255,0.6); padding: 8px 20px; border-radius: 8px; cursor: pointer; font-weight: 700; }
+    .tab-btn.active { background: #6366F1; color: #fff; border-color: #6366F1; }
+  </style>
+</head>
+<body>
+  <div class="admin-wrap">
+    <!-- LOGIN -->
+    <div id="auth-section">
+      <div class="login-box">
+        <h2 style="margin:0 0 16px;color:#6366F1;">🔐 Admin Login</h2>
+        <input type="password" id="secret-input" placeholder="Admin secret password" autocomplete="off">
+        <button class="btn btn-primary" style="width:100%;" onclick="adminLogin()">Login</button>
+        <p id="auth-err" style="color:#ef4444;font-size:13px;margin-top:8px;"></p>
+      </div>
+    </div>
+
+    <!-- MAIN PANEL -->
+    <div id="main-section">
+      <h1>🛡️ AdvScribbl Admin</h1>
+      <p style="color:rgba(255,255,255,0.5);margin-bottom:24px;">Manage premium username approvals</p>
+
+      <!-- Stats -->
+      <div class="panel">
+        <h3 style="margin:0 0 4px;">📊 Stats</h3>
+        <div class="stat-grid" id="stats-grid">
+          <div class="stat-card"><div class="num" id="stat-active">—</div><div class="label">Active Players</div></div>
+          <div class="stat-card"><div class="num" id="stat-premium">—</div><div class="label">Premium Usernames</div></div>
+          <div class="stat-card"><div class="num" id="stat-revenue">—</div><div class="label">Total Revenue</div></div>
+          <div class="stat-card"><div class="num" id="stat-pending">—</div><div class="label">Pending Approvals</div></div>
+        </div>
+      </div>
+
+      <!-- Tabs -->
+      <div class="tab-btns">
+        <button class="tab-btn active" onclick="showTab('pending')">⏳ Pending</button>
+        <button class="tab-btn" onclick="showTab('approved')">✅ Approved</button>
+      </div>
+
+      <!-- Pending Table -->
+      <div class="panel" id="tab-pending">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <h3 style="margin:0;">⏳ Pending Approvals</h3>
+          <button class="btn btn-ghost" onclick="loadPending()" style="font-size:13px;">🔄 Refresh</button>
+        </div>
+        <div id="pending-msg"></div>
+        <table>
+          <thead>
+            <tr><th>Username</th><th>UTR Number</th><th>Submitted At</th><th>Action</th></tr>
+          </thead>
+          <tbody id="pending-tbody">
+            <tr><td colspan="4" style="text-align:center;color:rgba(255,255,255,0.3);">Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Approved Table -->
+      <div class="panel" id="tab-approved" style="display:none;">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <h3 style="margin:0;">✅ Approved Premiums</h3>
+          <button class="btn btn-ghost" onclick="loadApproved()" style="font-size:13px;">🔄 Refresh</button>
+        </div>
+        <table>
+          <thead>
+            <tr><th>Username</th><th>UTR Number</th><th>Approved At</th></tr>
+          </thead>
+          <tbody id="approved-tbody">
+            <tr><td colspan="3" style="text-align:center;color:rgba(255,255,255,0.3);">Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API = '/api';
+    let secret = '';
+
+    function adminLogin() {
+      secret = document.getElementById('secret-input').value.trim();
+      if (!secret) return;
+      document.getElementById('auth-err').textContent = '';
+      loadAll();
+    }
+
+    document.getElementById('secret-input').addEventListener('keydown', e => {
+      if (e.key === 'Enter') adminLogin();
+    });
+
+    function showTab(tab) {
+      document.getElementById('tab-pending').style.display  = tab === 'pending'  ? '' : 'none';
+      document.getElementById('tab-approved').style.display = tab === 'approved' ? '' : 'none';
+      document.querySelectorAll('.tab-btn').forEach((b, i) => {
+        b.classList.toggle('active', (i === 0 && tab === 'pending') || (i === 1 && tab === 'approved'));
+      });
+      if (tab === 'approved') loadApproved();
+    }
+
+    function fmt(dateStr) {
+      if (!dateStr) return '—';
+      return new Date(dateStr).toLocaleString('en-IN', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' });
+    }
+
+    async function loadAll() {
+      try {
+        // Try to get stats — if 403, wrong secret
+        const statsRes = await fetch(`${API}/admin/stats?secret=${encodeURIComponent(secret)}`);
+        if (statsRes.status === 403) {
+          document.getElementById('auth-err').textContent = 'Wrong secret password.';
+          return;
+        }
+        const stats = await statsRes.json();
+        document.getElementById('auth-section').style.display = 'none';
+        document.getElementById('main-section').style.display = 'block';
+        document.getElementById('stat-active').textContent  = stats.live?.activePlayers ?? '—';
+        document.getElementById('stat-premium').textContent = stats.database?.premiumUsers ?? '—';
+        document.getElementById('stat-revenue').textContent = stats.database?.totalRevenue ?? '—';
+        loadPending();
+      } catch (err) {
+        document.getElementById('auth-err').textContent = 'Server error: ' + err.message;
+      }
+    }
+
+    async function loadPending() {
+      const tbody = document.getElementById('pending-tbody');
+      tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:rgba(255,255,255,0.3);">Loading…</td></tr>';
+      try {
+        const res = await fetch(`${API}/payment/admin-pending?secret=${encodeURIComponent(secret)}`);
+        const data = await res.json();
+        const rows = data.pending || [];
+        document.getElementById('stat-pending').textContent = rows.length;
+        if (rows.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:rgba(255,255,255,0.3);">No pending approvals 🎉</td></tr>';
+          return;
+        }
+        tbody.innerHTML = rows.map(r => `
+          <tr id="row-${r.username}">
+            <td><b style="color:#6366F1;">@${r.username}</b></td>
+            <td><span class="utr-mono">${r.utr_number}</span></td>
+            <td>${fmt(r.created_at)}</td>
+            <td><button class="approve-btn" onclick="approve('${r.username}', this)">✅ Approve</button></td>
+          </tr>
+        `).join('');
+      } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="4" style="color:#ef4444;">Error: ${err.message}</td></tr>`;
+      }
+    }
+
+    async function approve(username, btn) {
+      btn.disabled = true;
+      btn.textContent = 'Approving…';
+      const msgEl = document.getElementById('pending-msg');
+      try {
+        const res = await fetch(`${API}/payment/admin-approve`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ secret, username }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        const row = document.getElementById(`row-${username}`);
+        if (row) {
+          row.style.opacity = '0.4';
+          row.querySelector('td:last-child').innerHTML = '<span class="badge approved">✅ Approved</span>';
+        }
+        msgEl.innerHTML = `<div class="msg success">✅ @${username} has been granted premium!</div>`;
+        setTimeout(() => { msgEl.innerHTML = ''; }, 4000);
+        document.getElementById('stat-pending').textContent =
+          Math.max(0, parseInt(document.getElementById('stat-pending').textContent) - 1);
+      } catch (err) {
+        btn.disabled = false;
+        btn.textContent = '✅ Approve';
+        msgEl.innerHTML = `<div class="msg error">❌ ${err.message}</div>`;
+      }
+    }
+
+    async function loadApproved() {
+      const tbody = document.getElementById('approved-tbody');
+      tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:rgba(255,255,255,0.3);">Loading…</td></tr>';
+      try {
+        const res = await fetch(`${API}/payment/admin-approved?secret=${encodeURIComponent(secret)}`);
+        const data = await res.json();
+        const rows = data.approved || [];
+        if (rows.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:rgba(255,255,255,0.3);">No approved usernames yet.</td></tr>';
+          return;
+        }
+        tbody.innerHTML = rows.map(r => `
+          <tr>
+            <td><b style="color:#22c55e;">@${r.username}</b> ⭐</td>
+            <td><span class="utr-mono">${r.utr_number}</span></td>
+            <td>${fmt(r.approved_at)}</td>
+          </tr>
+        `).join('');
+      } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="3" style="color:#ef4444;">Error: ${err.message}</td></tr>`;
+      }
+    }
+  </script>
+</body>
+</html>

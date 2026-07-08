@@ -1,131 +1,182 @@
 /**
- * Razorpay payment + premium unlock flow.
- * Exposes window.Payment.open() to launch the upgrade modal.
+ * UPI Payment + Premium Username Locking Flow
+ * Step 1: Check username availability
+ * Step 2: Pay ₹20 via UPI (QR on desktop, intent link on mobile)
+ * Step 3: Submit 12-digit UTR number
+ * Step 4: Wait for admin approval → premium colors unlock
  */
 (function () {
   const API = ((window.ENV && window.ENV.API) || '') + '/api';
 
-  const modal = document.getElementById('premium-modal');
-  const closeBtn = document.getElementById('premium-close');
-  const payBtn = document.getElementById('premium-pay-btn');
-  const note = document.getElementById('payment-note');
+  const modal      = document.getElementById('premium-modal');
+  const closeBtn   = document.getElementById('premium-close');
 
-  let config = null;
+  // Step panels
+  const step1Panel = document.getElementById('upi-step1');
+  const step2Panel = document.getElementById('upi-step2');
+  const step3Panel = document.getElementById('upi-step3');
+  const successPanel = document.getElementById('upi-success');
 
-  async function getConfig() {
-    if (config) return config;
-    const res = await fetch(API + '/payment/config');
-    config = await res.json();
-    return config;
+  let lockedUsername = '';
+  let upiConfig = null;
+
+  // Fetch UPI config from backend
+  async function getUpiConfig() {
+    if (upiConfig) return upiConfig;
+    try {
+      const res = await fetch(API + '/payment/upi-config');
+      upiConfig = await res.json();
+    } catch (_) {
+      upiConfig = { upiId: 'advscribbl@ybl', upiName: 'Bhusam Ganesh', amount: 20 };
+    }
+    return upiConfig;
   }
 
-  function authHeaders() {
-    const t = window.Auth?.token();
-    return t ? { Authorization: 'Bearer ' + t, 'Content-Type': 'application/json' } : { 'Content-Type': 'application/json' };
+  function showStep(n) {
+    [step1Panel, step2Panel, step3Panel, successPanel].forEach((p, i) => {
+      if (p) p.style.display = (i + 1 === n || (n === 4 && i === 3)) ? '' : 'none';
+    });
+    if (successPanel) successPanel.style.display = (n === 4) ? '' : 'none';
   }
 
   function show() {
     modal.style.display = 'flex';
-    note.textContent = '';
-    getConfig().then((cfg) => {
-      if (cfg.mock) {
-        note.textContent = 'Demo mode: clicking Pay will instantly grant premium (no charge).';
-      } else {
-        note.textContent = 'Secure payment via Razorpay. Test card 4111 1111 1111 1111 in test mode.';
-      }
-    });
+    showStep(1);
+    const usernameInput = document.getElementById('upi-username-input');
+    if (usernameInput) {
+      // Pre-fill from the name they typed on the home screen
+      const homeName = (document.getElementById('login-name')?.value || '').trim();
+      if (homeName) usernameInput.value = homeName;
+    }
+    document.getElementById('upi-check-result').textContent = '';
   }
 
   function hide() {
     modal.style.display = 'none';
   }
 
-  closeBtn.addEventListener('click', hide);
-  modal.addEventListener('click', (e) => { if (e.target === modal) hide(); });
+  if (closeBtn) closeBtn.addEventListener('click', hide);
+  modal?.addEventListener('click', (e) => { if (e.target === modal) hide(); });
 
-  payBtn.addEventListener('click', async () => {
-    payBtn.disabled = true;
-    const original = payBtn.textContent;
-    payBtn.textContent = 'Creating order…';
+  // ── STEP 1: Check username availability ──────────────────────────────────
+  const checkBtn    = document.getElementById('upi-check-btn');
+  const checkResult = document.getElementById('upi-check-result');
+
+  checkBtn?.addEventListener('click', async () => {
+    const input = document.getElementById('upi-username-input');
+    const username = input.value.trim().toLowerCase();
+    if (!username) { checkResult.textContent = 'Enter a username first.'; checkResult.className = 'utr-status error'; return; }
+
+    checkBtn.disabled = true;
+    checkResult.textContent = 'Checking…';
+    checkResult.className = 'utr-status';
+
     try {
-      const cfg = await getConfig();
-      const orderRes = await fetch(API + '/payment/order', {
-        method: 'POST',
-        headers: authHeaders(),
-        body: '{}',
-      });
-      const order = await orderRes.json();
-      if (!orderRes.ok) throw new Error(order.error || 'Failed to create order');
-
-      if (cfg.mock) {
-        // Mock-mode: immediately verify
-        await verify({ razorpay_order_id: order.orderId });
-        return;
+      const res = await fetch(`${API}/payment/check-username?username=${encodeURIComponent(username)}`);
+      const data = await res.json();
+      if (data.available) {
+        checkResult.textContent = `✅ "${username}" is available! Proceed to pay.`;
+        checkResult.className = 'utr-status success';
+        lockedUsername = username;
+        document.getElementById('upi-step2-username').textContent = `@${username}`;
+        document.getElementById('upi-success-name').textContent = username;
+        setTimeout(() => showStep(2), 900);
+      } else {
+        checkResult.textContent = `❌ ${data.reason}`;
+        checkResult.className = 'utr-status error';
       }
-
-      const options = {
-        key: cfg.keyId,
-        amount: order.amount,
-        currency: order.currency,
-        order_id: order.orderId,
-        name: 'AdvScribbl Premium',
-        description: cfg.productName,
-        theme: { color: '#6366F1' },
-        prefill: {
-          name: window.Auth?.user()?.name || '',
-          email: window.Auth?.user()?.email || '',
-        },
-        handler: async function (response) {
-          await verify(response);
-        },
-        modal: {
-          ondismiss: function () {
-            payBtn.disabled = false;
-            payBtn.textContent = original;
-          },
-        },
-      };
-      const rp = new Razorpay(options);
-      rp.open();
-    } catch (err) {
-      console.error(err);
-      window.toast?.(err.message, 'error');
-      payBtn.disabled = false;
-      payBtn.textContent = original;
+    } catch (_) {
+      checkResult.textContent = '❌ Network error. Try again.';
+      checkResult.className = 'utr-status error';
+    } finally {
+      checkBtn.disabled = false;
     }
   });
 
-  async function verify(response) {
-    payBtn.textContent = 'Verifying…';
-    const res = await fetch(API + '/payment/verify', {
-      method: 'POST',
-      headers: authHeaders(),
-      body: JSON.stringify(response),
-    });
-    const data = await res.json();
-    if (!res.ok || !data.success) {
-      window.toast?.(data.error || 'Verification failed', 'error');
-      payBtn.disabled = false;
-      payBtn.textContent = 'Pay ₹25 via Razorpay';
+  // ── STEP 2: Show payment options ─────────────────────────────────────────
+  const proceedToUTRBtn = document.getElementById('upi-paid-btn');
+
+  // When step 2 shows, build the UPI links
+  document.getElementById('upi-pay-btn')?.addEventListener('click', async () => {
+    const cfg = await getUpiConfig();
+    const upiUrl = `upi://pay?pa=${encodeURIComponent(cfg.upiId)}&pn=${encodeURIComponent(cfg.upiName)}&am=${cfg.amount}&cu=INR&tn=AdvScribblPremium-${lockedUsername}`;
+    window.location.href = upiUrl;
+  });
+
+  proceedToUTRBtn?.addEventListener('click', () => showStep(3));
+
+  // ── STEP 3: Submit UTR ───────────────────────────────────────────────────
+  const submitUTRBtn  = document.getElementById('upi-submit-utr-btn');
+  const utrStatus     = document.getElementById('utr-submit-status');
+
+  submitUTRBtn?.addEventListener('click', async () => {
+    const utrInput = document.getElementById('upi-utr-input');
+    const utr = utrInput.value.trim().replace(/\s+/g, '');
+
+    if (!/^\d{12}$/.test(utr)) {
+      utrStatus.textContent = '❌ UTR must be exactly 12 digits.';
+      utrStatus.className = 'utr-status error';
       return;
     }
-    const fresh = await window.Auth.refresh();
-    if (fresh) window.Auth.setUser(fresh);
-    window.toast?.('Premium unlocked! 🎉', 'success');
-    hide();
-    document.dispatchEvent(new CustomEvent('premium:unlocked'));
-    payBtn.disabled = false;
-    payBtn.textContent = 'Pay ₹25 via Razorpay';
-  }
 
+    submitUTRBtn.disabled = true;
+    submitUTRBtn.textContent = 'Submitting…';
+    utrStatus.textContent = '';
+
+    try {
+      const res = await fetch(`${API}/payment/submit-utr`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: lockedUsername, utr }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        utrStatus.textContent = `❌ ${data.error}`;
+        utrStatus.className = 'utr-status error';
+        submitUTRBtn.disabled = false;
+        submitUTRBtn.textContent = '✅ Submit UTR';
+        return;
+      }
+      // Success
+      utrStatus.textContent = '';
+      showStep(4);
+    } catch (_) {
+      utrStatus.textContent = '❌ Network error. Please try again.';
+      utrStatus.className = 'utr-status error';
+      submitUTRBtn.disabled = false;
+      submitUTRBtn.textContent = '✅ Submit UTR';
+    }
+  });
+
+  // ── Success close ────────────────────────────────────────────────────────
+  document.getElementById('upi-success-close')?.addEventListener('click', hide);
+
+  // ── Bind "Unlock Premium" button ─────────────────────────────────────────
   window.Payment = { open: show, hide };
 
-  // Bind premium buttons
-  document.getElementById('button-unlock-premium')?.addEventListener('click', () => {
-    if (window.Auth?.user()?.has_premium) {
-      window.toast?.('You already own Premium!', 'success');
-      return;
+  document.getElementById('button-unlock-premium')?.addEventListener('click', () => show());
+
+  // Detect if user is on mobile and toggle QR vs intent button
+  document.addEventListener('DOMContentLoaded', async () => {
+    const cfg = await getUpiConfig();
+    const isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
+    const qrSection  = document.getElementById('upi-qr-section');
+    const payBtn     = document.getElementById('upi-pay-btn');
+    if (isMobile) {
+      if (qrSection) qrSection.style.display = 'none';
+      if (payBtn) {
+        payBtn.style.display = 'block';
+        payBtn.textContent = `📱 Open GPay / PhonePe — Pay ₹${cfg.amount}`;
+      }
+    } else {
+      if (qrSection) qrSection.style.display = 'block';
+      if (payBtn) {
+        payBtn.style.display = 'none'; // Hide intent button on desktop
+      }
     }
-    show();
+    // Update amount display
+    document.querySelectorAll('.upi-amount').forEach(el => {
+      el.textContent = `₹${cfg.amount}`;
+    });
   });
 })();

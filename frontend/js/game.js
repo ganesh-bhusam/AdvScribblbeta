@@ -186,15 +186,14 @@
   const MAX_RECONNECT = 5;
 
   function connectAndJoin(opts) {
-    const token = window.Auth?.token();
-    if (!token) return;
+    const playerName = ($('login-name').value || '').trim() || 'Player';
     if (socket) { try { socket.disconnect(); } catch (_) { /* noop */ } socket = null; }
     reconnectAttempts = 0;
     socket = io(window.ENV.API || undefined, {
       path: '/api/socket.io/',
       transports: ['websocket', 'polling'],
-      auth: { token },
-      reconnection: true,           // [FIX H2] Enable built-in reconnection
+      auth: { name: playerName },   // No JWT — just send name for premium check
+      reconnection: true,
       reconnectionAttempts: MAX_RECONNECT,
       reconnectionDelay: 1500,
       reconnectionDelayMax: 8000,
@@ -204,9 +203,9 @@
       socket.emit('login', {
         join: opts.join || 0,
         create: opts.create ? 1 : 0,
-        name: $('login-name').value.trim() || (window.Auth.user()?.name || 'Player'),
+        name: playerName,
         lang: String(opts.lang ?? $('login-language').value ?? '0'),
-        mode: document.querySelector('input[name="login-mode"]:checked') ? document.querySelector('input[name="login-mode"]:checked').value : 'all',
+        mode: document.querySelector('input[name="login-mode"]:checked')?.value || 'all',
         code: '',
         avatar: avatarPayload(),
       });
