@@ -328,6 +328,9 @@
   }
   function onTimerTick(t) {
     $('game-clock').querySelector('.text').textContent = t;
+    if (t === 10 && room && room.type === 1) {
+      playSound('let-me-tell-you-something.mp3');
+    }
   }
   function onHintsUpdate(arr) {
     arr.forEach(([idx, ch]) => { wordHints[idx] = ch; });
