@@ -1213,8 +1213,9 @@ select option {
   letter-spacing: 0.18em;
   text-transform: uppercase;
   color: var(--text-dim);
-  font-weight: 700;
+  font-weight: 900;
   margin-left: 24px;
+  margin-right: 24px;
   padding-bottom: 12px;
   border-bottom: 1px solid var(--glass-border);
   margin-bottom: 12px;
@@ -1746,7 +1747,7 @@ body.premium-cursor #game-canvas.tool-fill canvas { cursor: url("data:image/svg+
   align-items: center;
   gap: 8px;
   font-size: 0.78rem;
-  font-weight: 800;
+  font-weight: 900;
   letter-spacing: .08em;
   color: #b45309;
   text-transform: uppercase;
