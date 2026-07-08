@@ -156,27 +156,50 @@
 
   document.getElementById('button-unlock-premium')?.addEventListener('click', () => show());
 
-  // Detect if user is on mobile and toggle QR vs intent button
+  // Detect if user is on mobile and build QR/button dynamically
   document.addEventListener('DOMContentLoaded', async () => {
     const cfg = await getUpiConfig();
     const isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
-    const qrSection  = document.getElementById('upi-qr-section');
-    const payBtn     = document.getElementById('upi-pay-btn');
+    const qrSection = document.getElementById('upi-qr-section');
+    const payBtn    = document.getElementById('upi-pay-btn');
+
+    // Build UPI deep link with ₹20 and note pre-filled
+    const upiLink = `upi://pay?pa=${encodeURIComponent(cfg.upiId)}&pn=${encodeURIComponent(cfg.upiName)}&am=${cfg.amount}&cu=INR&tn=AdvScribblPremium`;
+
     if (isMobile) {
+      // ── MOBILE: show a big tap-to-pay button ──────────────────────────────
       if (qrSection) qrSection.style.display = 'none';
       if (payBtn) {
         payBtn.style.display = 'block';
         payBtn.textContent = `📱 Open GPay / PhonePe — Pay ₹${cfg.amount}`;
+        // Update the click handler with correct UPI link
+        payBtn.onclick = () => { window.location.href = upiLink; };
       }
     } else {
-      if (qrSection) qrSection.style.display = 'block';
-      if (payBtn) {
-        payBtn.style.display = 'none'; // Hide intent button on desktop
+      // ── DESKTOP: auto-generate QR code with ₹20 pre-filled ───────────────
+      if (payBtn) payBtn.style.display = 'none';
+      if (qrSection) {
+        qrSection.style.display = 'block';
+        const qrImg = qrSection.querySelector('img');
+        if (qrImg) {
+          // Use free QR generator API — encodes the UPI link so amount is pre-filled
+          const qrData = encodeURIComponent(upiLink);
+          qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&margin=10&data=${qrData}`;
+          qrImg.alt = `Scan to pay ₹${cfg.amount} to ${cfg.upiName}`;
+        }
+        // Also add a note showing the UPI ID so users can search manually
+        const noteEl = qrSection.querySelector('p');
+        if (noteEl) {
+          noteEl.innerHTML = `Scan with GPay · PhonePe · Paytm · Any UPI app<br>
+            <span style="font-size:12px;color:rgba(255,255,255,0.4);">UPI: ${cfg.upiId}</span>`;
+        }
       }
     }
-    // Update amount display
+
+    // Update all amount displays
     document.querySelectorAll('.upi-amount').forEach(el => {
       el.textContent = `₹${cfg.amount}`;
     });
   });
 })();
+
