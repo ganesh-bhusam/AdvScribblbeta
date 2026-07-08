@@ -145,12 +145,10 @@
 
   // ============================ HOME ============================
   function updateHomeUI() {
-    let name = $('login-name').value;
-    if (!name) {
-      name = 'Guest';
-    }
-    $('welcome-text').innerHTML = `Hi <b>${escapeHTML(name)}</b>`;
-    // Removed the auto-fill logic so the input remains empty
+    const name = $('login-name').value.trim();
+    $('welcome-text').innerHTML = name
+      ? `Hi <b>${escapeHTML(name)}</b>`
+      : `Welcome! <b>Enter your name</b> to play.`;
   }
 
   function setAvatar(idx) {
@@ -179,7 +177,8 @@
   const MAX_RECONNECT = 5;
 
   function connectAndJoin(opts) {
-    const playerName = ($('login-name').value || '').trim() || 'Player';
+    const playerName = ($('login-name').value || '').trim();
+    if (!playerName) { toast('Enter a name first', 'error'); return; }
     if (socket) { try { socket.disconnect(); } catch (_) { /* noop */ } socket = null; }
     reconnectAttempts = 0;
     socket = io(window.ENV.API || undefined, {
@@ -1625,7 +1624,16 @@
     const qs = new URLSearchParams(window.location.search);
     const r = extractRoomId(qs.get('room'));
     if (r) {
-      connectAndJoin({ join: r });
+      // Pre-fill the room code input so user can see it
+      if ($('login-room')) $('login-room').value = r;
+      // Only auto-join if they already have a name typed
+      const existingName = $('login-name').value.trim();
+      if (existingName) {
+        connectAndJoin({ join: r });
+      } else {
+        // Show them a toast to enter name first
+        toast('Enter your name to join the room!', 'info');
+      }
     }
   });
   document.addEventListener('premium:unlocked', updateHomeUI);
