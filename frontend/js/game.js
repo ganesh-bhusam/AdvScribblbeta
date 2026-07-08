@@ -599,6 +599,49 @@
         playSound('faah.mp3');
       }
 
+      // Populate dynamic turn score changes inside the canvas overlay
+      const revealScores = $('reveal-scores');
+      if (revealScores) {
+        revealScores.innerHTML = '';
+        const sortedScores = [];
+        for (let i = 0; i < sc.length; i += 3) {
+          const pid = sc[i], score = sc[i + 1], delta = sc[i + 2];
+          const p = players.find((x) => x.id === pid);
+          if (p) {
+            sortedScores.push({ player: p, score, delta });
+          }
+        }
+        
+        // Sort by delta desc so scorers show first, followed by score desc
+        sortedScores.sort((a, b) => b.delta - a.delta || b.score - a.score);
+        
+        sortedScores.forEach(({ player, score, delta }, idx) => {
+          const row = el('div', 'reveal-score-row');
+          if (delta > 0) row.classList.add('has-points');
+          
+          // Build avatar
+          const av = el('div', 'char-head small');
+          const c = HEAD_COLORS[(player.avatar && player.avatar[0] != null ? player.avatar[0] : 0) % HEAD_COLORS.length];
+          av.setAttribute('data-color', c);
+          const face = el('div', 'face');
+          av.appendChild(face);
+          
+          const nameSpan = el('span', 'player-name', player.name);
+          const pointsSpan = el('span', 'player-points', delta > 0 ? `+${delta}` : '0');
+          const totalSpan = el('span', 'player-total', `${score} pts`);
+          
+          row.appendChild(av);
+          row.appendChild(nameSpan);
+          row.appendChild(pointsSpan);
+          row.appendChild(totalSpan);
+          
+          // Add staggered entrance animations
+          row.style.animationDelay = `${idx * 0.08}s`;
+          
+          revealScores.appendChild(row);
+        });
+      }
+
       updatePlayersList();
     } else if (s.id === STATE.X) {
       overlay.classList.add('active');
@@ -610,6 +653,14 @@
       $('game-word').querySelector('.word').textContent = '-';
       $('game-word').querySelector('.description').textContent = '';
 
+      // Clear previous podium content and reset rank numbers
+      for (let rank = 1; rank <= 3; rank++) {
+        const slot = $('podest-slot-' + rank);
+        if (slot) {
+          slot.innerHTML = `<div class="rank">${rank}</div>`;
+        }
+      }
+
       const ranks = s.data || [];
       const top = ranks[0];
       try {
@@ -619,12 +670,41 @@
         } else {
           $('winner-name').textContent = 'Someone';
         }
+        
         const list = $('ranks-list'); list.innerHTML = '';
         ranks.forEach((r) => {
           const p = players.find((x) => x.id === r[0]);
           if (!p) return;
+          
+          const rank = r[1] + 1; // 1-based rank
+          
+          // Populate dynamic visual podium slot
+          if (rank <= 3) {
+            const slot = $('podest-slot-' + rank);
+            if (slot) {
+              const playerDiv = el('div', 'podest-player');
+              
+              // Build avatar
+              const av = el('div', 'char-head'); // regular size for podium!
+              const c = HEAD_COLORS[(p.avatar && p.avatar[0] != null ? p.avatar[0] : 0) % HEAD_COLORS.length];
+              av.setAttribute('data-color', c);
+              const face = el('div', 'face');
+              av.appendChild(face);
+              
+              const nameDiv = el('div', 'podest-name', p.name);
+              const scoreDiv = el('div', 'podest-score', p.score + ' pts');
+              
+              playerDiv.appendChild(av);
+              playerDiv.appendChild(nameDiv);
+              playerDiv.appendChild(scoreDiv);
+              
+              // Insert player div before the rank number
+              slot.insertBefore(playerDiv, slot.firstChild);
+            }
+          }
+          
           const row = el('div', 'rank-row');
-          row.innerHTML = `<span><b>#${r[1] + 1}</b> ${escapeHTML(p.name)}</span><span>${p.score} pts</span>`;
+          row.innerHTML = `<span><b>#${rank}</b> ${escapeHTML(p.name)}</span><span>${p.score} pts</span>`;
           list.appendChild(row);
         });
       } catch (e) {

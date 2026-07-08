@@ -21,7 +21,7 @@
   <link
     href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Caveat:wght@400;600;700&family=Patrick+Hand&display=swap"
     rel="stylesheet">
-  <link rel="stylesheet" href="/css/style.css?v=1.1.0">
+  <link rel="stylesheet" href="/css/style.css?v=1.2.0">
 
   <!-- SDKs and client-side dependencies -->
   <!-- Socket.IO only (Razorpay removed) -->
@@ -283,19 +283,20 @@
           <div class="reveal" id="overlay-reveal">
             <p><span>The word was</span> <span class="word" id="reveal-word"></span></p>
             <div class="reason" id="reveal-reason"></div>
+            <div class="reveal-scores" id="reveal-scores"></div>
           </div>
           <!-- End-of-match final scoreboard winner podiums display -->
           <div class="result" id="overlay-result">
             <div class="message"><b class="winner-name" id="winner-name"></b><span class="winner-text"> is the
                 winner!</span></div>
             <div class="podests">
-              <div class="podest podest-2">
+              <div class="podest podest-2" id="podest-slot-2">
                 <div class="rank">2</div>
               </div>
-              <div class="podest podest-1">
+              <div class="podest podest-1" id="podest-slot-1">
                 <div class="rank">1</div>
               </div>
-              <div class="podest podest-3">
+              <div class="podest podest-3" id="podest-slot-3">
                 <div class="rank">3</div>
               </div>
             </div>
@@ -567,9 +568,9 @@
   </div>
 
   <!-- Frontend logical layers imported modules scripts -->
-  <script src="/js/auth.js?v=1.1.0"></script>
-  <script src="/js/payment.js?v=1.1.0"></script>
-  <script src="/js/game.js?v=1.1.0"></script>
+  <script src="/js/auth.js?v=1.2.0"></script>
+  <script src="/js/payment.js?v=1.2.0"></script>
+  <script src="/js/game.js?v=1.2.0"></script>
 </body>
 
 </html>
