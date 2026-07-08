@@ -152,6 +152,7 @@ class Room {
       avatar: p.avatar,
       score: p.score,
       guessed: p.guessed,
+      hasPremium: !!p.hasPremium
     };
   }
 

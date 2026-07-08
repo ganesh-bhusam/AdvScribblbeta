@@ -144,20 +144,9 @@
 
   // ============================ HOME ============================
   function updateHomeUI() {
-    const user = window.Auth?.user();
-    if (!user) return;
-    $('welcome-text').innerHTML = `Hi <b>${escapeHTML(user.name)}</b>` + (user.has_premium ? ' <span class="prem-icon">★</span>' : '');
-    if (!$('login-name').value) $('login-name').value = user.name;
-    const btn = $('button-unlock-premium');
-    if (user.has_premium) {
-      btn.innerHTML = '<span class="prem-icon">★</span> Premium Unlocked';
-      btn.disabled = true;
-      btn.style.opacity = '0.75';
-    } else {
-      btn.innerHTML = '<span class="prem-icon">★</span> Unlock Premium';
-      btn.disabled = false;
-      btn.style.opacity = '';
-    }
+    const name = $('login-name').value || 'Guest';
+    $('welcome-text').innerHTML = `Hi <b>${escapeHTML(name)}</b>`;
+    if (!$('login-name').value) $('login-name').value = name;
   }
 
   function setAvatar(idx) {
@@ -279,6 +268,9 @@
     const myPlayer = players.find(p => p.id === me);
     if (myPlayer && Array.isArray(myPlayer.avatar)) {
       avatarIdx = (myPlayer.avatar[0] != null ? myPlayer.avatar[0] : 0) % HEAD_COLORS.length;
+      updateAvatarPreview();
+      window.isPremium = myPlayer.hasPremium || window.mockPremium;
+      buildPalette(premiumColorsActive && window.isPremium);
     }
     updateLobbyAvatarUI();
   }
@@ -875,9 +867,11 @@
       grid.appendChild(sw);
     });
     refreshColorSelection();
+    refreshColorSelection();
 
-    usePremium = window.Auth?.user()?.has_premium || window.mockPremium;
-    if (usePremium) {
+    const isUserPremium = window.isPremium;
+    usePremium = isUserPremium && premiumColorsActive;
+    if (isUserPremium) {
       document.body.classList.add('premium-cursor');
     } else {
       document.body.classList.remove('premium-cursor');
@@ -930,8 +924,7 @@
 
   const premiumSwitch = $('toggle-color-panel');
   premiumSwitch.addEventListener('click', () => {
-    const user = window.Auth?.user();
-    if (!user?.has_premium) {
+    if (!window.isPremium) {
       premiumSwitch.classList.remove('active');
       premiumSwitch.setAttribute('aria-pressed', 'false');
       window.Payment.open();
@@ -1485,8 +1478,6 @@
       toast('Link: ' + link, 'success');
     }
   });
-
-  $('logout-btn').addEventListener('click', () => window.Auth.logout());
 
   // ============================ SHAPES GRID GENERATION ============================
   const SHAPES = [
