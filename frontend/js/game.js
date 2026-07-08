@@ -263,6 +263,7 @@
     currentState = data.state.id;
     show('game');
     updatePlayersList();
+    $('chat-content').innerHTML = ''; // Fix: Clear previous chat when rejoining
     applyState(data.state);
     addChatSystem('Joined room ' + data.id);
     playSound('join');
@@ -1108,6 +1109,16 @@
   const undoneCommands = [];
 
   let rainbowHue = 0;
+  let pendingDrawCmds = []; // Buffer for socket batching
+
+  // Flush drawing commands to server at regular intervals to prevent socket flooding
+  setInterval(() => {
+    if (pendingDrawCmds.length > 0) {
+      send(19, pendingDrawCmds);
+      pendingDrawCmds = [];
+    }
+  }, 40);
+
   function randomHexColor() {
     return '#' + Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0');
   }
@@ -1139,7 +1150,7 @@
         currentHue = (currentHue + 2) % 360;
       }
       const cmd = [0, usedColor, brushSize, p.x, p.y, p.x, p.y];
-      drawCommands.push(cmd); renderCommand(cmd); send(19, [cmd]);
+      drawCommands.push(cmd); renderCommand(cmd); pendingDrawCmds.push(cmd);
     }
   });
 
@@ -1160,7 +1171,9 @@
         currentHue = (currentHue + 2) % 360;
       }
       const cmd = [0, usedColor, brushSize, lastPoint.x, lastPoint.y, p.x, p.y];
-      drawCommands.push(cmd); renderCommand(cmd); send(19, [cmd]);
+      drawCommands.push(cmd);
+      renderCommand(cmd);
+      pendingDrawCmds.push(cmd);
       lastPoint = p;
     } else if (tool === 'line' || tool === 'rect' || tool === 'circle' || tool === 'shape') {
       redrawAll();
@@ -1176,7 +1189,19 @@
       const shapeType = tool === 'shape' ? currentShapeType : tool;
       const typeCode = SHAPE_MAP[shapeType] || 2;
       const cmd = [typeCode, colorIndex, brushSize, strokeStart.x, strokeStart.y, p.x, p.y];
-      drawCommands.push(cmd); renderCommand(cmd); send(19, [cmd]);
+      drawCommands.push(cmd); 
+      renderCommand(cmd); 
+      pendingDrawCmds.push(cmd);
+      
+      if (pendingDrawCmds.length > 0) {
+        send(19, pendingDrawCmds);
+        pendingDrawCmds = [];
+      }
+    } else {
+      if (pendingDrawCmds.length > 0) {
+        send(19, pendingDrawCmds);
+        pendingDrawCmds = [];
+      }
     }
     drawing = false; strokeStart = null; lastPoint = null;
   }
