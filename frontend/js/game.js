@@ -928,7 +928,7 @@
 
     if (!usePremium && tool === 'rainbow') {
       tool = 'pencil';
-      document.querySelectorAll('#tool-buttons .tool-btn:not(#tool-cursor-toggle)').forEach((x) => x.classList.toggle('active', x.dataset.tool === 'pencil'));
+      document.querySelectorAll('#tool-buttons .tool-btn').forEach((x) => x.classList.toggle('active', x.dataset.tool === 'pencil'));
     }
   }
 
@@ -986,15 +986,21 @@
   }
 
   // ============================ TOOLS / SIZES ============================
+  // Cursor toggle is now in the game-bar (always visible to all players)
+  const cursorToggleBtn = $('tool-cursor-toggle');
+  if (cursorToggleBtn) {
+    cursorToggleBtn.classList.add('active'); // default: custom cursor ON
+    cursorToggleBtn.addEventListener('click', () => {
+      customCursorEnabled = !customCursorEnabled;
+      cursorToggleBtn.style.opacity = customCursorEnabled ? '1' : '0.45';
+      cursorToggleBtn.title = customCursorEnabled ? 'Custom Cursor: ON' : 'Custom Cursor: OFF';
+      updateCanvasCursor();
+    });
+  }
+
   document.querySelectorAll('#tool-buttons .tool-btn').forEach((b) => {
     b.addEventListener('click', () => {
-      if (b.id === 'tool-cursor-toggle') {
-        customCursorEnabled = !customCursorEnabled;
-        b.classList.toggle('active', customCursorEnabled);
-        updateCanvasCursor();
-        return;
-      }
-      document.querySelectorAll('#tool-buttons .tool-btn:not(#tool-cursor-toggle)').forEach((x) => x.classList.remove('active'));
+      document.querySelectorAll('#tool-buttons .tool-btn').forEach((x) => x.classList.remove('active'));
       document.querySelectorAll('.shape-btn').forEach((x) => x.classList.remove('active'));
       b.classList.add('active');
       tool = b.dataset.tool;
@@ -1603,7 +1609,7 @@
       b.addEventListener('click', (ev) => {
         ev.preventDefault();
         document.querySelectorAll('.shape-btn').forEach(x => x.classList.remove('active'));
-        document.querySelectorAll('#tool-buttons .tool-btn:not(#tool-cursor-toggle)').forEach(x => x.classList.remove('active'));
+        document.querySelectorAll('#tool-buttons .tool-btn').forEach(x => x.classList.remove('active'));
         b.classList.add('active');
         tool = 'shape';
         updateCanvasCursor();
