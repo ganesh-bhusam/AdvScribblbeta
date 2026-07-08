@@ -120,7 +120,8 @@
 
   function playSound(name) {
     try {
-      const a = new Audio('/audio/' + name + '.ogg');
+      const ext = name.includes('.') ? '' : '.ogg';
+      const a = new Audio('/audio/' + name + ext);
       a.volume = 0.35;
       a.play().catch(() => {});
     } catch (_) { /* noop */ }
@@ -587,7 +588,7 @@
       }
 
       if (!anyoneGuessed && (s.data?.reason === 1 || s.data?.reason === 5 || s.data?.reason === 2)) {
-        playSound('roundEndFail');
+        playSound('faah.mp3');
       }
 
       updatePlayersList();
