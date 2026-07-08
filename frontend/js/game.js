@@ -1412,32 +1412,44 @@
     }
   }
 
-  $('button-login-play').addEventListener('click', () => {
+  function withDebounce(btnId, cb) {
+    const btn = $(btnId);
+    if (!btn) return;
+    btn.addEventListener('click', (e) => {
+      if (btn.disabled) return;
+      cb(e);
+      btn.disabled = true;
+      setTimeout(() => { btn.disabled = false; }, 2000);
+    });
+  }
+
+  withDebounce('button-login-play', () => {
     const name = $('login-name').value.trim();
     if (!name) { toast('Enter a name first', 'error'); return; }
     connectAndJoin({ create: 0, lang: $('login-language').value });
   });
-  $('button-login-create').addEventListener('click', () => {
+
+  withDebounce('button-login-create', () => {
     const name = $('login-name').value.trim();
     if (!name) { toast('Enter a name first', 'error'); return; }
     connectAndJoin({ create: 1, lang: $('login-language').value });
   });
+
   function extractRoomId(str) {
     if (!str) return '';
     str = str.trim();
     if (str.includes('room=')) {
       try {
         const u = new URL(str.startsWith('http') ? str : 'http://dummy/' + str);
-        return u.searchParams.get('room') || str;
-      } catch (_) {
-        const match = str.match(/room=([a-zA-Z0-9_-]+)/);
-        if (match) return match[1];
+        return u.searchParams.get('room') || '';
+      } catch (e) {
+        return '';
       }
     }
     return str;
   }
 
-  $('button-login-join').addEventListener('click', () => {
+  withDebounce('button-login-join', () => {
     const raw = $('login-room').value;
     const code = extractRoomId(raw);
     if (!code) { toast('Enter an invite code', 'error'); return; }
