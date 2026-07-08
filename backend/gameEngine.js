@@ -145,6 +145,7 @@ class Room {
     };
   }
   publicPlayer(p) {
+    const hasDrawn = this.round > 0 && Array.isArray(this.drawerQueue) && !this.drawerQueue.includes(p.id) && p.id !== this.currentDrawerId;
     return {
       id: p.id,
       flags: p.flags,
@@ -152,7 +153,8 @@ class Room {
       avatar: p.avatar,
       score: p.score,
       guessed: p.guessed,
-      hasPremium: !!p.hasPremium
+      hasPremium: !!p.hasPremium,
+      drawn: hasDrawn
     };
   }
 

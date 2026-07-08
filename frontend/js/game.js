@@ -700,6 +700,9 @@
       if (p.id === currentDrawerId) {
         const pencilIcon = el('span', 'drawer-icon', ' ✏️');
         nameRow.appendChild(pencilIcon);
+      } else if (p.drawn) {
+        const drawnIcon = el('span', 'drawn-icon', ' ✅');
+        nameRow.appendChild(drawnIcon);
       }
       let scoreText = (p.score || 0) + ' pts';
       if (p.delta && p.delta > 0) {
