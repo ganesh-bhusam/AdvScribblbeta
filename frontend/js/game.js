@@ -144,7 +144,10 @@
 
   // ============================ HOME ============================
   function updateHomeUI() {
-    const name = $('login-name').value || 'Guest';
+    let name = $('login-name').value;
+    if (!name) {
+      name = 'Guest' + Math.floor(1000 + Math.random() * 9000);
+    }
     $('welcome-text').innerHTML = `Hi <b>${escapeHTML(name)}</b>`;
     if (!$('login-name').value) $('login-name').value = name;
   }
@@ -693,6 +696,10 @@
       if (mutedPlayerIds.has(p.id)) {
         const muteIcon = el('span', 'mute-icon', ' 🔇');
         nameRow.appendChild(muteIcon);
+      }
+      if (p.id === currentDrawerId) {
+        const pencilIcon = el('span', 'drawer-icon', ' ✏️');
+        nameRow.appendChild(pencilIcon);
       }
       let scoreText = (p.score || 0) + ' pts';
       if (p.delta && p.delta > 0) {
