@@ -268,6 +268,10 @@
     addChatSystem('Joined room ' + data.id);
     playSound('join');
     if (data.type === 1) {
+      const link = window.location.origin + '/?room=' + data.id;
+      if ($('invite-link-input')) {
+        $('invite-link-input').value = link;
+      }
       showRoomSettings(data.settings, data.owner === me);
     }
     const myPlayer = players.find(p => p.id === me);
@@ -1524,18 +1528,41 @@
       send(22, '');
     }
   });
-  $('button-invite').addEventListener('click', () => {
+  
+  $('button-invite')?.addEventListener('click', () => {
     if (!room) return;
     const link = window.location.origin + '/?room=' + room.id;
-    if (navigator.clipboard?.writeText) {
-      navigator.clipboard.writeText(link).then(
-        () => toast('Invite link copied!', 'success'),
-        () => toast('Link: ' + link, 'success')
-      );
-    } else {
-      toast('Link: ' + link, 'success');
-    }
+    copyToClipboard(link);
   });
+  
+  $('button-copy-invite')?.addEventListener('click', () => {
+    if (!room) return;
+    const link = window.location.origin + '/?room=' + room.id;
+    copyToClipboard(link);
+  });
+  
+  function copyToClipboard(text) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(
+        () => toast('Invite link copied!', 'success'),
+        () => toast('Link: ' + text, 'success')
+      ).catch(() => toast('Link: ' + text, 'success'));
+    } else {
+      // Fallback
+      const tempInput = document.createElement("input");
+      tempInput.style = "position: absolute; left: -1000px; top: -1000px";
+      tempInput.value = text;
+      document.body.appendChild(tempInput);
+      tempInput.select();
+      try {
+        document.execCommand("copy");
+        toast('Invite link copied!', 'success');
+      } catch (err) {
+        toast('Link: ' + text, 'success');
+      }
+      document.body.removeChild(tempInput);
+    }
+  }
 
   // ============================ SHAPES GRID GENERATION ============================
   const SHAPES = [
