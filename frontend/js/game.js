@@ -146,10 +146,10 @@
   function updateHomeUI() {
     let name = $('login-name').value;
     if (!name) {
-      name = 'Guest' + Math.floor(1000 + Math.random() * 9000);
+      name = 'Guest';
     }
     $('welcome-text').innerHTML = `Hi <b>${escapeHTML(name)}</b>`;
-    if (!$('login-name').value) $('login-name').value = name;
+    // Removed the auto-fill logic so the input remains empty
   }
 
   function setAvatar(idx) {
