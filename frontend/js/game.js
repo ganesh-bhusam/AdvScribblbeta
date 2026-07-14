@@ -40,13 +40,13 @@
   let currentState = STATE.G;
   let currentWord = null;
   let wordHints = [];
-  let colorIndex = 11;
+  let colorIndex = 26;  // Start on first premium color (premium palette is default)
   let secondaryColorIndex = 0;
   let brushSize = 8;
   let tool = 'pencil';
   let currentHue = 0;
   let drawingEnabled = false;
-  let premiumColorsActive = false;
+  let premiumColorsActive = true;  // Premium colors are the default palette
   let languages = [];
   let myEmojiCount = 0;
   let avatarIdx = 0;
@@ -72,24 +72,23 @@
   wheelInput.style.height = '0';
   document.body.appendChild(wheelInput);
 
-  // Custom premium color selection logic (Wheel & Random) using event delegation
+  // color-wheel button → picks a random color (replaces random button)
   document.addEventListener('click', (ev) => {
-    if (ev.target && ev.target.id === 'color-wheel') {
+    if (ev.target && (ev.target.id === 'color-wheel' || ev.target.closest('#color-wheel'))) {
       ev.preventDefault();
-      wheelInput.click();
+      // Random from ALL_COLORS for variety
+      const rndIdx = Math.floor(Math.random() * ALL_COLORS.length);
+      setColor(rndIdx);
     }
   });
 
-  wheelInput.addEventListener('input', () => {
-    const hex = wheelInput.value;
-    setColor(hex);
-  });
-
+  // Legacy: action-random (kept for any old references)
   document.addEventListener('click', (ev) => {
     const btn = ev.target && ev.target.closest('#action-random');
     if (btn) {
       ev.preventDefault();
-      setColor(randomHexColor());
+      const rndIdx = Math.floor(Math.random() * ALL_COLORS.length);
+      setColor(rndIdx);
     }
   });
 
@@ -116,6 +115,13 @@
   function show(view) {
     $('home').style.display = view === 'home' ? '' : 'none';
     $('game').style.display = view === 'game' ? '' : 'none';
+    
+    // Wipe game UI state when returning to home
+    if (view === 'home') {
+      const chatContent = $('chat-content');
+      if (chatContent) chatContent.innerHTML = '';
+      if (typeof clearCanvasLocal === 'function') clearCanvasLocal();
+    }
   }
 
   function playSound(name) {
@@ -146,11 +152,13 @@
   // ============================ HOME ============================
   function updateHomeUI() {
     let name = $('login-name').value;
+    if (name) {
+      localStorage.setItem('advscribbl_name', name);
+    }
     if (!name) {
       name = 'Guest';
     }
     $('welcome-text').innerHTML = `Hi <b>${escapeHTML(name)}</b>`;
-    // Removed the auto-fill logic so the input remains empty
   }
 
   function setAvatar(idx) {
@@ -264,6 +272,16 @@
     show('game');
     updatePlayersList();
     $('chat-content').innerHTML = ''; // Fix: Clear previous chat when rejoining
+    
+    // Load existing canvas state if joining mid-round
+    if (data.drawCommands && Array.isArray(data.drawCommands)) {
+      drawCommands.length = 0;
+      data.drawCommands.forEach(c => {
+        drawCommands.push(c);
+      });
+      redrawAll();
+    }
+    
     applyState(data.state);
     addChatSystem('Joined room ' + data.id);
     playSound('join');
@@ -278,8 +296,8 @@
     if (myPlayer && Array.isArray(myPlayer.avatar)) {
       avatarIdx = (myPlayer.avatar[0] != null ? myPlayer.avatar[0] : 0) % HEAD_COLORS.length;
       updateAvatarPreview();
-      window.isPremium = myPlayer.hasPremium || window.mockPremium;
-      buildPalette(premiumColorsActive && window.isPremium);
+      window.isPremium = true; // All users get premium features for free
+      buildPalette(); // Always builds with premium colors + all tools
     }
     updateLobbyAvatarUI();
   }
@@ -336,6 +354,23 @@
     if (t === 10 && room && room.type === 1) {
       playSound('let-me-tell-you-something.mp3');
     }
+    
+    // Clue mode for drawer in last 10 seconds
+    if (t <= 10 && currentDrawerId === me && drawingEnabled) {
+      const chatInp = $('chat-input');
+      const chatBtn = document.querySelector('.chat-send');
+      const chatForm = $('chat-form');
+      if (chatInp && chatBtn && chatForm && chatInp.disabled) {
+        chatInp.disabled = false;
+        chatInp.placeholder = "Enter a clue...";
+        chatBtn.innerHTML = '💡';
+        chatForm.classList.add('clue-mode');
+        
+        // Add a transition effect class
+        chatInp.classList.add('clue-transition');
+        setTimeout(() => chatInp.classList.remove('clue-transition'), 1000);
+      }
+    }
   }
   function onHintsUpdate(arr) {
     arr.forEach(([idx, ch]) => { wordHints[idx] = ch; });
@@ -360,6 +395,7 @@
     drawCommands.length = 0;
     clearCanvasLocal();
     undoneCommands.length = 0;
+    if (typeof strokeSizes !== 'undefined') strokeSizes.length = 0;
     updateRedoButtonState();
   }
   function onUndo(newLen) {
@@ -368,6 +404,10 @@
     updateRedoButtonState();
   }
   function onChat(d) {
+    if (d.id === 0) {
+      addChatSystem(d.msg, 'guess-close');
+      return;
+    }
     if (mutedPlayerIds.has(d.id)) return;
     const p = players.find((x) => x.id === d.id);
     addChat({ author: p?.name || '?', msg: d.msg });
@@ -454,6 +494,9 @@
       overlay.classList.add('active');
       overlayContent.classList.add('active');
       $('overlay-room').classList.add('active');
+      if ($('display-room-code') && room && room.id) {
+        $('display-room-code').textContent = room.id;
+      }
       $('game-round').querySelector('.text').textContent = 'Private Room';
       showRoomSettings(room.settings, room.owner === me);
     } else if (s.id === STATE.K) {
@@ -468,16 +511,23 @@
       $('overlay-text').classList.add('active');
       $('overlay-text').textContent = 'Round ' + ((s.data ?? 0) + 1);
       $('game-round').querySelector('.text').textContent = 'Round ' + ((s.data ?? 0) + 1);
-      players.forEach((p) => (p.guessed = false));
+      players.forEach((p) => {
+        p.guessed = false;
+        p.drawn = false;
+      });
       updatePlayersList();
       clearCanvasLocal();
       drawCommands.length = 0;
+      if (typeof strokeSizes !== 'undefined') strokeSizes.length = 0;
+      undoneCommands.length = 0;
     } else if (s.id === STATE.V) {
       myEmojiCount = 0;
       players.forEach((p) => (p.guessed = false));
       updatePlayersList();
       clearCanvasLocal();
       drawCommands.length = 0;
+      if (typeof strokeSizes !== 'undefined') strokeSizes.length = 0;
+      undoneCommands.length = 0;
       currentDrawerId = s.data?.id;
       const isDrawer = currentDrawerId === me;
       overlay.classList.add('active');
@@ -551,7 +601,28 @@
         $('game-word').querySelector('.description').textContent = 'DRAW THIS';
         $('game-word').querySelector('.word').textContent = currentWord;
         wordHints = currentWord.split('').map((c) => (c === ' ' ? ' ' : null));
+        
+        // Disable chat for drawer at start of round
+        const chatInp = $('chat-input');
+        const chatBtn = document.querySelector('.chat-send');
+        const chatForm = $('chat-form');
+        if (chatInp && chatBtn && chatForm) {
+          chatInp.disabled = true;
+          chatInp.placeholder = "You are drawing!";
+          chatBtn.innerHTML = '↵';
+          chatForm.classList.remove('clue-mode');
+        }
       } else {
+        const chatInp = $('chat-input');
+        const chatBtn = document.querySelector('.chat-send');
+        const chatForm = $('chat-form');
+        if (chatInp && chatBtn && chatForm) {
+          chatInp.disabled = false;
+          chatInp.placeholder = "Type your guess here…";
+          chatBtn.innerHTML = '↵';
+          chatForm.classList.remove('clue-mode');
+        }
+        
         currentWord = null;
         const w = s.data?.word;
         const isHidden = room && room.settings[6] === 1;
@@ -582,6 +653,8 @@
       $('reveal-word').textContent = s.data?.word || '???';
       const reasonMap = { 0: 'Everyone guessed!', 1: 'Time is up!', 2: 'Drawer left', 5: 'Drawer skipped' };
       $('reveal-reason').textContent = reasonMap[s.data?.reason] || '';
+      const drawer = players.find((p) => p.id === currentDrawerId);
+      if (drawer) drawer.drawn = true;
       const sc = s.data?.scores || [];
       let anyoneGuessed = false;
       for (let i = 0; i < sc.length; i += 3) {
@@ -698,14 +771,13 @@
               playerDiv.appendChild(nameDiv);
               playerDiv.appendChild(scoreDiv);
               
-              // Insert player div before the rank number
               slot.insertBefore(playerDiv, slot.firstChild);
             }
+          } else {
+            const row = el('div', 'rank-row');
+            row.innerHTML = `<span><b>#${rank}</b> ${escapeHTML(p.name)}</span><span>${p.score} pts</span>`;
+            list.appendChild(row);
           }
-          
-          const row = el('div', 'rank-row');
-          row.innerHTML = `<span><b>#${rank}</b> ${escapeHTML(p.name)}</span><span>${p.score} pts</span>`;
-          list.appendChild(row);
         });
       } catch (e) {
         console.error('Error rendering podium:', e);
@@ -814,7 +886,7 @@
       const sc = el('div', 'player-score', scoreText);
       info.appendChild(nameRow); info.appendChild(sc);
       const rank = el('div', 'player-rank', '#' + (idx + 1));
-      card.appendChild(av); card.appendChild(info); card.appendChild(rank);
+      card.appendChild(rank); card.appendChild(info); card.appendChild(av);
       // Click → context menu (votekick / kick / ban) for other players
       card.addEventListener('click', (ev) => {
         if (p.id === me) return;
@@ -959,58 +1031,64 @@
 
 
   // ============================ COLOR PALETTE ============================
-  function buildPalette(usePremium) {
+  function buildPalette() {
     const grid = $('color-grid');
     if (!grid) return;
     grid.innerHTML = '';
-    const colors = usePremium ? PREMIUM_COLORS : STANDARD_COLORS;
-    const offset = usePremium ? 26 : 0;
-    colors.forEach((c, i) => {
-      const idx = offset + i;
+
+    // Build STANDARD colors in the top row
+    const standardGrid = $('color-grid-standard');
+    if (standardGrid) {
+      standardGrid.innerHTML = '';
+      STANDARD_COLORS.forEach((c, i) => {
+        const sw = el('button', 'color-swatch');
+        sw.type = 'button';
+        sw.style.background = c;
+        sw.dataset.color = String(i);
+        sw.dataset.testid = 'color-std-' + i;
+        sw.addEventListener('click', (ev) => { 
+          ev.preventDefault(); 
+          setColor(i); 
+          document.querySelectorAll('.tb-group').forEach(g => g.classList.remove('show'));
+        });
+        sw.addEventListener('contextmenu', (ev) => { 
+          ev.preventDefault(); 
+          setColor(i, true); 
+          document.querySelectorAll('.tb-group').forEach(g => g.classList.remove('show'));
+        });
+        standardGrid.appendChild(sw);
+      });
+    }
+
+    // Build PREMIUM colors in the bottom row
+    PREMIUM_COLORS.forEach((c, i) => {
+      const idx = 26 + i; // premium colors start at index 26 in ALL_COLORS
       const sw = el('button', 'color-swatch');
       sw.type = 'button';
       sw.style.background = c;
       sw.dataset.color = String(idx);
       sw.dataset.testid = 'color-' + idx;
-      sw.addEventListener('click', (ev) => { ev.preventDefault(); setColor(idx); });
-      sw.addEventListener('contextmenu', (ev) => { ev.preventDefault(); setColor(idx, true); });
+      sw.addEventListener('click', (ev) => { 
+        ev.preventDefault(); 
+        setColor(idx); 
+        document.querySelectorAll('.tb-group').forEach(g => g.classList.remove('show'));
+      });
+      sw.addEventListener('contextmenu', (ev) => { 
+        ev.preventDefault(); 
+        setColor(idx, true); 
+        document.querySelectorAll('.tb-group').forEach(g => g.classList.remove('show'));
+      });
       grid.appendChild(sw);
     });
     refreshColorSelection();
-    refreshColorSelection();
 
-    const isUserPremium = window.isPremium;
-    usePremium = isUserPremium && premiumColorsActive;
-    if (isUserPremium) {
-      document.body.classList.add('premium-cursor');
-    } else {
-      document.body.classList.remove('premium-cursor');
-    }
 
-    // Show/hide premium toolbar sections in sync with toggle state
-    const customTools = $('premium-color-tools');
-    if (customTools) customTools.style.display = usePremium ? 'flex' : 'none';
-
-    const premiumShapes = $('premium-shapes');
-    if (premiumShapes) premiumShapes.style.display = usePremium ? 'flex' : 'none';
-
+    // Show redo and rainbow for premium (always on)
     const redoBtn = $('action-redo');
-    if (redoBtn) redoBtn.style.display = usePremium ? 'inline-flex' : 'none';
-
-    const standardSize = $('size-picker');
-    const premiumSize = $('premium-size-slider');
-    if (standardSize) standardSize.style.display = 'flex';
-    if (premiumSize) premiumSize.style.display = 'none';
+    if (redoBtn) redoBtn.style.display = 'inline-flex';
 
     const rainbowBtn = $('tool-rainbow');
-    if (rainbowBtn) {
-      rainbowBtn.style.display = usePremium ? 'inline-flex' : 'none';
-    }
-
-    if (!usePremium && tool === 'rainbow') {
-      tool = 'pencil';
-      document.querySelectorAll('#tool-buttons .tool-btn:not(#tool-cursor-toggle)').forEach((x) => x.classList.toggle('active', x.dataset.tool === 'pencil'));
-    }
+    if (rainbowBtn) rainbowBtn.style.display = 'inline-flex';
   }
 
   function setColor(idx, secondary = false) {
@@ -1032,31 +1110,17 @@
     });
   }
 
+  // Toggle button removed — premium is always on for everyone
+  // Guard in case any legacy reference still exists in DOM
   const premiumSwitch = $('toggle-color-panel');
-  premiumSwitch.addEventListener('click', () => {
-    if (!window.isPremium) {
-      premiumSwitch.classList.remove('active');
-      premiumSwitch.setAttribute('aria-pressed', 'false');
-      window.Payment.open();
-      return;
-    }
-    premiumColorsActive = !premiumColorsActive;
-    premiumSwitch.classList.toggle('active', premiumColorsActive);
-    premiumSwitch.setAttribute('aria-pressed', String(premiumColorsActive));
-    buildPalette(premiumColorsActive);
-    if (premiumColorsActive) setColor(26);
-    else setColor(11);
-  });
-
-  let customCursorEnabled = true;
-
+  if (premiumSwitch) premiumSwitch.addEventListener('click', () => { /* no-op */ });
   function updateCanvasCursor() {
     const cvs = $('game-canvas');
     if (!cvs) return;
     cvs.classList.remove('tool-pencil', 'tool-eraser', 'tool-fill');
     
-    if (!drawingEnabled || !customCursorEnabled) {
-      canvas.style.cursor = drawingEnabled ? 'crosshair' : 'default';
+    if (!drawingEnabled) {
+      canvas.style.cursor = 'default';
       return;
     }
     
@@ -1066,16 +1130,33 @@
     else if (tool === 'bucket') cvs.classList.add('tool-fill');
   }
 
-  // ============================ TOOLS / SIZES ============================
+  // ============================ POPUPS & TOOLS ============================
+  // Handle click to show/hide popups
+  document.addEventListener('click', (ev) => {
+    const isTrigger = ev.target.closest('.tb-trigger');
+    const isInsidePopup = ev.target.closest('.tb-popup');
+
+    if (isTrigger) {
+      ev.preventDefault();
+      const group = isTrigger.closest('.tb-group');
+      const wasShowing = group.classList.contains('show');
+      
+      // Close all other groups
+      document.querySelectorAll('.tb-group').forEach(g => g.classList.remove('show'));
+      
+      // Toggle this group
+      if (!wasShowing) {
+        group.classList.add('show');
+      }
+    } else if (!isInsidePopup) {
+      // Clicked outside, close all
+      document.querySelectorAll('.tb-group').forEach(g => g.classList.remove('show'));
+    }
+  });
+
   document.querySelectorAll('#tool-buttons .tool-btn').forEach((b) => {
     b.addEventListener('click', () => {
-      if (b.id === 'tool-cursor-toggle') {
-        customCursorEnabled = !customCursorEnabled;
-        b.classList.toggle('active', customCursorEnabled);
-        updateCanvasCursor();
-        return;
-      }
-      document.querySelectorAll('#tool-buttons .tool-btn:not(#tool-cursor-toggle)').forEach((x) => x.classList.remove('active'));
+      document.querySelectorAll('#tool-buttons .tool-btn').forEach((x) => x.classList.remove('active'));
       document.querySelectorAll('.shape-btn').forEach((x) => x.classList.remove('active'));
       b.classList.add('active');
       tool = b.dataset.tool;
@@ -1087,8 +1168,30 @@
       document.querySelectorAll('#size-picker .size-btn').forEach((x) => x.classList.remove('active'));
       b.classList.add('active');
       brushSize = Number(b.dataset.size);
+      
+      const dot = $('current-size-dot');
+      if (dot) {
+        dot.style.width = brushSize + 'px';
+        dot.style.height = brushSize + 'px';
+      }
+      
+      const sizePicker = $('size-picker');
+      if (sizePicker) sizePicker.classList.remove('mobile-open');
     });
   });
+
+  // Mobile popups logic
+  const colorPreviewBtn = $('color-preview');
+  const sizePreviewBtn = $('current-size-preview');
+  const cg = $('color-grid');
+  const sp = $('size-picker');
+  const dotInit = $('current-size-dot');
+  
+  if (dotInit) {
+    dotInit.style.width = '8px';
+    dotInit.style.height = '8px';
+  }
+
 
   // Premium Brush Size Slider Implementation
   const SIZES = [3, 8, 16, 32];
@@ -1124,9 +1227,13 @@
   // Undo / Redo Actions
   $('action-undo').addEventListener('click', () => {
     if (!drawingEnabled) return;
-    if (drawCommands.length === 0) return;
-    const popped = drawCommands.pop();
-    undoneCommands.push(popped);
+    if (strokeSizes.length === 0) return;
+    const popCount = strokeSizes.pop();
+    const poppedStroke = [];
+    for (let i = 0; i < popCount; i++) {
+      poppedStroke.push(drawCommands.pop());
+    }
+    undoneCommands.push(poppedStroke);
     send(21, drawCommands.length);
     redrawAll();
     updateRedoButtonState();
@@ -1137,10 +1244,18 @@
     redoBtn.addEventListener('click', () => {
       if (!drawingEnabled) return;
       if (undoneCommands.length === 0) return;
-      const cmd = undoneCommands.pop();
-      drawCommands.push(cmd);
-      send(19, [cmd]);
-      renderCommand(cmd);
+      const strokeToRedo = undoneCommands.pop();
+      // Push back to drawCommands in original order (reverse iteration because we popped from end)
+      for (let i = strokeToRedo.length - 1; i >= 0; i--) {
+        drawCommands.push(strokeToRedo[i]);
+      }
+      strokeSizes.push(strokeToRedo.length);
+      send(19, strokeToRedo.slice().reverse()); // send in original order
+      
+      // Redraw the stroke
+      for (let i = strokeToRedo.length - 1; i >= 0; i--) {
+        renderCommand(strokeToRedo[i]);
+      }
       updateRedoButtonState();
     });
   }
@@ -1154,8 +1269,11 @@
   $('action-clear').addEventListener('click', () => {
     if (!drawingEnabled) return;
     drawCommands.length = 0;
+    if (typeof strokeSizes !== 'undefined') strokeSizes.length = 0;
+    undoneCommands.length = 0;
     send(20, null);
     clearCanvasLocal();
+    updateRedoButtonState();
   });
 
   // ============================ DRAWING ============================
@@ -1191,6 +1309,8 @@
 
   let currentShapeType = 'line';
   const undoneCommands = [];
+  const strokeSizes = [];
+  let currentStrokeSize = 0;
 
   let rainbowHue = 0;
   let pendingDrawCmds = []; // Buffer for socket batching
@@ -1220,11 +1340,13 @@
     drawing = true;
     strokeStart = p; lastPoint = p;
     undoneCommands.length = 0;
+    currentStrokeSize = 0;
     updateRedoButtonState();
 
     if (tool === 'bucket') {
       const cmd = [1, colorIndex, brushSize, p.x, p.y, p.x, p.y];
       drawCommands.push(cmd); renderCommand(cmd); send(19, [cmd]);
+      currentStrokeSize++;
       drawing = false;
     } else if (tool === 'pencil' || tool === 'eraser' || tool === 'rainbow') {
       let usedColor = colorIndex;
@@ -1235,6 +1357,7 @@
       }
       const cmd = [0, usedColor, brushSize, p.x, p.y, p.x, p.y];
       drawCommands.push(cmd); renderCommand(cmd); pendingDrawCmds.push(cmd);
+      currentStrokeSize++;
     }
   });
 
@@ -1258,6 +1381,7 @@
       drawCommands.push(cmd);
       renderCommand(cmd);
       pendingDrawCmds.push(cmd);
+      currentStrokeSize++;
       lastPoint = p;
     } else if (tool === 'line' || tool === 'rect' || tool === 'circle' || tool === 'shape') {
       redrawAll();
@@ -1276,6 +1400,7 @@
       drawCommands.push(cmd); 
       renderCommand(cmd); 
       pendingDrawCmds.push(cmd);
+      currentStrokeSize++;
       
       if (pendingDrawCmds.length > 0) {
         send(19, pendingDrawCmds);
@@ -1287,6 +1412,12 @@
         pendingDrawCmds = [];
       }
     }
+    
+    if (currentStrokeSize > 0) {
+      strokeSizes.push(currentStrokeSize);
+      currentStrokeSize = 0;
+    }
+
     drawing = false; strokeStart = null; lastPoint = null;
   }
 
@@ -1522,28 +1653,65 @@
   // ============================ HOME ACTIONS ============================
   document.querySelectorAll('[data-avatar-dir]').forEach((b) => b.addEventListener('click', () => pickAvatar(Number(b.dataset.avatarDir))));
 
-  // Lobby avatar customization
-  $('lobby-avatar-prev').addEventListener('click', (ev) => {
-    ev.preventDefault();
-    avatarIdx = ((avatarIdx - 1) % HEAD_COLORS.length + HEAD_COLORS.length) % HEAD_COLORS.length;
-    updateLobbyAvatarUI();
-    send(9, avatarPayload());
-    // Also sync the home screen avatar preview to match
-    setAvatar(avatarIdx);
-  });
-  $('lobby-avatar-next').addEventListener('click', (ev) => {
-    ev.preventDefault();
-    avatarIdx = (avatarIdx + 1) % HEAD_COLORS.length;
-    updateLobbyAvatarUI();
-    send(9, avatarPayload());
-    setAvatar(avatarIdx);
-  });
-
-  function updateLobbyAvatarUI() {
-    const head = $('lobby-avatar-head');
-    if (head) {
-      head.setAttribute('data-color', HEAD_COLORS[avatarIdx]);
+  // Custom Words Logic
+  let customWordsArray = [];
+  
+  if ($('open-custom-words-modal')) {
+    $('open-custom-words-modal').addEventListener('click', () => {
+      $('custom-words-modal').style.display = 'flex';
+      $('new-custom-word-input').focus();
+      renderCustomWords();
+    });
+  }
+  
+  if ($('close-custom-words-modal')) {
+    $('close-custom-words-modal').addEventListener('click', () => {
+      $('custom-words-modal').style.display = 'none';
+    });
+  }
+  
+  if ($('add-custom-word-btn')) {
+    $('add-custom-word-btn').addEventListener('click', addCustomWord);
+  }
+  
+  if ($('new-custom-word-input')) {
+    $('new-custom-word-input').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') addCustomWord();
+    });
+  }
+  
+  function addCustomWord() {
+    const input = $('new-custom-word-input');
+    const word = input.value.trim();
+    if (word && !customWordsArray.includes(word)) {
+      customWordsArray.push(word);
+      input.value = '';
+      renderCustomWords();
     }
+  }
+  
+  window.removeCustomWord = function(word) {
+    customWordsArray = customWordsArray.filter(w => w !== word);
+    renderCustomWords();
+  };
+  
+  function renderCustomWords() {
+    const list = $('custom-words-list');
+    if (!list) return;
+    list.innerHTML = '';
+    customWordsArray.forEach(word => {
+      const chip = document.createElement('div');
+      chip.className = 'custom-word-chip';
+      chip.textContent = word;
+      
+      const removeBtn = document.createElement('button');
+      removeBtn.className = 'remove-btn';
+      removeBtn.textContent = '-';
+      removeBtn.onclick = () => removeCustomWord(word);
+      
+      chip.appendChild(removeBtn);
+      list.appendChild(chip);
+    });
   }
 
   function withDebounce(btnId, cb) {
@@ -1598,9 +1766,8 @@
     show('home');
   });
   $('button-start-game').addEventListener('click', () => {
-    const cw = $('custom-words-input');
     const co = $('custom-words-only');
-    const words = (cw?.value || '').trim();
+    const words = customWordsArray.join(',');
     const useOnly = !!(co && co.checked);
     if (words) {
       send(22, { words, useOnly: useOnly ? 1 : 0 });
@@ -1684,7 +1851,7 @@
       b.addEventListener('click', (ev) => {
         ev.preventDefault();
         document.querySelectorAll('.shape-btn').forEach(x => x.classList.remove('active'));
-        document.querySelectorAll('#tool-buttons .tool-btn:not(#tool-cursor-toggle)').forEach(x => x.classList.remove('active'));
+        document.querySelectorAll('#tool-buttons .tool-btn').forEach(x => x.classList.remove('active'));
         b.classList.add('active');
         tool = 'shape';
         updateCanvasCursor();
@@ -1696,6 +1863,12 @@
 
   // ============================ BOOTSTRAP ============================
   document.addEventListener('auth:ready', async () => {
+    const loginNameEl = $('login-name');
+    if (loginNameEl) {
+      const savedName = localStorage.getItem('advscribbl_name');
+      if (savedName) loginNameEl.value = savedName;
+      loginNameEl.addEventListener('input', updateHomeUI);
+    }
     updateHomeUI();
     await loadLanguages();
     buildShapesGrid();
@@ -1709,30 +1882,4 @@
     }
   });
   document.addEventListener('premium:unlocked', updateHomeUI);
-
-  // Mobile Tabs Logic
-  document.querySelectorAll('.mobile-tab-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      // Remove active class from all buttons
-      document.querySelectorAll('.mobile-tab-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-
-      const target = btn.dataset.target;
-      const chatPanel = document.getElementById('game-chat');
-      const playersPanel = document.getElementById('game-players');
-      // On mobile, the canvas is always visible, but the tab-content switches between chat and players.
-      
-      if (target === 'chat') {
-        chatPanel.classList.add('mobile-tab-view', 'active');
-        playersPanel.classList.remove('mobile-tab-view', 'active');
-        chatPanel.style.display = '';
-        playersPanel.style.display = 'none';
-      } else if (target === 'players') {
-        playersPanel.classList.add('mobile-tab-view', 'active');
-        chatPanel.classList.remove('mobile-tab-view', 'active');
-        playersPanel.style.display = '';
-        chatPanel.style.display = 'none';
-      }
-    });
-  });
 })();

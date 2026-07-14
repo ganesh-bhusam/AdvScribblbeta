@@ -142,6 +142,7 @@ class Room {
       round: this.round,
       owner: this.ownerId,
       state: this.state,
+      drawCommands: this.drawCommands,
     };
   }
   publicPlayer(p) {
@@ -436,6 +437,10 @@ class Room {
     if (playerId !== this.currentDrawerId) return;
     if (this.state.id !== STATE.j) return;
     if (!Array.isArray(cmds)) return;
+    
+    // Hard cap on drawCommands array size to prevent memory bloat
+    if (this.drawCommands.length + cmds.length > 50000) return;
+    
     for (const c of cmds) this.drawCommands.push(c);
     // broadcast to non-drawers only
     for (const p of this.players) {
@@ -491,8 +496,13 @@ class Room {
       return;
     }
 
-    // Drawer cannot chat during drawing
+    // Drawer cannot chat during drawing, EXCEPT in the last 10 seconds (Clue feature)
     if (this.state.id === STATE.j && playerId === this.currentDrawerId) {
+      const remaining = Math.max(0, this.settings[2] - (Date.now() - this.startTime) / 1000);
+      if (remaining <= 10) {
+        // Send as a system message to distinguish it as a clue
+        this.broadcast(30, { id: 0, msg: `💡 Clue from ${player.name}: ${msg}` });
+      }
       return;
     }
 
@@ -588,8 +598,11 @@ class Room {
   updatePlayerAvatar(playerId, avatarArray) {
     const player = this.players.find((p) => p.id === playerId);
     if (!player) return;
-    player.avatar = avatarArray;
-    this.broadcast(9, { id: playerId, avatar: avatarArray });
+    // Validate payload to prevent malicious injections
+    if (!Array.isArray(avatarArray)) return;
+    const cleanAvatar = avatarArray.slice(0, 4).map(v => typeof v === 'number' ? v : 0);
+    player.avatar = cleanAvatar;
+    this.broadcast(9, { id: playerId, avatar: cleanAvatar });
   }
   votekick(voterId, targetId) {
     if (voterId === targetId) return;
@@ -718,6 +731,15 @@ class Room {
   updateSetting(playerId, settingIdx, value) {
     if (playerId !== this.ownerId) return;
     if (settingIdx < 0 || settingIdx > 7) return;
+    
+    // Bounds validation to prevent crashes
+    if (typeof value !== 'number') return;
+    if (settingIdx === 1) value = Math.max(2, Math.min(20, value)); // slots
+    if (settingIdx === 2) value = Math.max(10, Math.min(300, value)); // drawtime
+    if (settingIdx === 3) value = Math.max(1, Math.min(10, value)); // rounds
+    if (settingIdx === 4) value = Math.max(1, Math.min(10, value)); // wordcount
+    if (settingIdx === 5) value = Math.max(0, Math.min(10, value)); // hints
+    
     this.settings[settingIdx] = value;
     this.broadcast(12, { id: settingIdx, val: value });
   }

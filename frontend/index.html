@@ -10,7 +10,7 @@
   <!-- Site title and SEO description metadata -->
   <title>AdvScribbl — Multiplayer Drawing &amp; Guessing Game</title>
   <meta name="description"
-    content="AdvScribbl — premium multiplayer drawing &amp; guessing game with glassmorphism UI, MS Paint tools, Romanized Indian languages and a custom premium color palette.">
+    content="AdvScribbl — multiplayer drawing & guessing game with glassmorphism UI, MS Paint tools, Romanized Indian languages and a full premium color palette — all free!">
 
   <!-- Favicon and fonts preconnections -->
   <link rel="icon" href="/img/legacy-panel.png">
@@ -54,9 +54,6 @@
       </h1>
       <div class="header-actions">
         <span class="welcome-text" id="welcome-text" data-testid="welcome-text"></span>
-        <button class="btn btn-ghost" id="button-unlock-premium" data-testid="home-premium-button">
-          <span class="prem-icon">🔒</span> Lock Username + Premium Colors
-        </button>
       </div>
     </header>
 
@@ -188,7 +185,7 @@
           <li>Premium glass-morphism UI with floating cards</li>
           <li>MS Paint-style toolset (Pencil, Bucket, Line, Rect, Circle, Eraser)</li>
           <li>Romanized Indian languages (Hinglish, Tamiglish, Teluglish…)</li>
-          <li>🔒 Lock your username + unlock 26 premium colors for just ₹20</li>
+          <li>⭐ Full premium color palette — free for everyone!</li>
           <li>Classic 8 colored character avatars</li>
         </ul>
       </div>
@@ -225,6 +222,11 @@
   <div id="game" style="display:none">
     <!-- Flexible layout wrapper for the complete game match dashboard layout -->
     <div id="game-wrapper">
+      <!-- Left Advertisement Slot -->
+      <div class="ad-slot ad-left" id="ad-left"></div>
+      <!-- Right Advertisement Slot -->
+      <div class="ad-slot ad-right" id="ad-right"></div>
+
       <!-- Game status panel: Displays round timer, counter, active word blanks, and exit triggers -->
       <header id="game-bar" class="glass-panel">
         <div class="screw tl"></div>
@@ -310,38 +312,18 @@
             <div class="settings-grid" id="settings-grid"></div>
             <!-- Custom words configuration text field inputs -->
             <div class="custom-words-wrap">
-              <label class="custom-words-label" for="custom-words-input">
-                Custom Words <span class="hint">(comma-separated, optional)</span>
-              </label>
-              <textarea id="custom-words-input" data-testid="custom-words-input" placeholder="pizza, dosa, sunflower, …"
-                rows="2" maxlength="2000"></textarea>
+              <button id="open-custom-words-modal" class="btn btn-play-blue" type="button" style="width: 100%; margin-bottom: 8px; padding: 10px; font-size: 14px;">✎ Manage Custom Words</button>
               <label class="custom-words-only">
                 <input type="checkbox" id="custom-words-only" data-testid="custom-words-only">
                 Use ONLY custom words
               </label>
             </div>
 
-            <!-- Lobby-specific avatar personalization selectors -->
-            <div class="lobby-avatar-wrap" data-testid="lobby-avatar-wrap">
-              <span class="lobby-avatar-label"
-                style="display:block;margin-top:12px;margin-bottom:6px;font-weight:600;font-size:14px;color:#a5b4fc">Customize
-                Lobby Avatar</span>
-              <div class="avatar-customizer lobby-customizer"
-                style="display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:12px">
-                <button class="avatar-arrow" id="lobby-avatar-prev" type="button"
-                  style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:#fff;width:36px;height:36px;border-radius:50%;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center">‹</button>
-                <div class="avatar-preview-lobby" id="lobby-avatar-preview"
-                  style="width:64px;height:64px;background:rgba(255,255,255,0.04);border-radius:12px;display:flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,0.1)">
-                  <div class="char-head" id="lobby-avatar-head" style="width:40px;height:40px">
-                    <div class="face"></div>
-                  </div>
-                </div>
-                <button class="avatar-arrow" id="lobby-avatar-next" type="button"
-                  style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:#fff;width:36px;height:36px;border-radius:50%;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center">›</button>
-              </div>
-            </div>
-
             <!-- Private game initialization action triggers -->
+            <div class="room-code-display" style="text-align: center; margin-bottom: 15px; padding: 10px; background: rgba(0, 0, 0, 0.2); border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.1);">
+              <div style="color: #a5b4fc; font-weight: 600; font-size: 14px; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 1px;">Room Code</div>
+              <div id="display-room-code" style="font-size: 28px; font-weight: 800; color: #fff; letter-spacing: 3px; user-select: all; cursor: text;">------</div>
+            </div>
             <div class="group-buttons">
               <button id="button-start-game" class="btn btn-play-green" data-testid="start-game-button">Start!</button>
               <button id="button-invite" class="btn btn-play-blue" data-testid="invite-button">Copy Invite Link</button>
@@ -351,93 +333,91 @@
         </div>
       </main>
 
-      <!-- Drawing tools options bar: Houses brush grids, tools icons, sizes picker, and premium switches -->
-      <section id="game-toolbar" class="glass-panel" data-testid="game-toolbar">
-        <div class="screw tl"></div>
-        <div class="screw tr"></div>
-        <div class="screw bl"></div>
-        <div class="screw br"></div>
+      <!-- Custom Words Modal Overlay -->
+      <div id="custom-words-modal" class="overlay" style="display: none; z-index: 1000; align-items: center; justify-content: center; background: rgba(0,0,0,0.7); backdrop-filter: blur(4px);">
+        <div class="glass-panel" style="width: 90%; max-width: 450px; padding: 20px; display: flex; flex-direction: column; gap: 15px; position: relative; max-height: 80vh;">
+          <div class="screw tl"></div><div class="screw tr"></div><div class="screw bl"></div><div class="screw br"></div>
+          <h3 style="margin: 0; color: #fff; text-align: center; font-family: 'Outfit', sans-serif;">Custom Words</h3>
+          <div style="display: flex; gap: 8px; margin-top: 10px;">
+            <input type="text" id="new-custom-word-input" class="wood-input" placeholder="Type a word..." style="flex: 1; padding: 10px;" autocomplete="off" maxlength="30">
+            <button id="add-custom-word-btn" class="btn btn-play-green" style="padding: 0 15px; font-size: 16px;">Add</button>
+          </div>
+          <div id="custom-words-list" style="display: flex; flex-wrap: wrap; gap: 12px; max-height: 250px; overflow-y: auto; padding: 12px 4px; min-height: 50px;">
+            <!-- Word chips get injected here -->
+          </div>
+          <button id="close-custom-words-modal" class="btn btn-play-blue" style="width: 100%; margin-top: 10px;">Done</button>
+        </div>
+      </div>
 
-        <!-- COLOURS SECTION -->
-        <div class="panel-section">
-          <div class="section-label"><span class="ico">🎨</span> Colours</div>
-          <div class="colours-row">
-            <!-- Active brush primary/secondary color display block -->
-            <div class="color-preview" id="color-preview" data-testid="color-preview">
+      <!-- Drawing tools bar: Single horizontal bar with hover popups -->
+      <section id="game-toolbar" class="glass-panel" data-testid="game-toolbar">
+
+        <!-- GROUP 1: Color Preview → click shows color grid popup -->
+        <div class="tb-group tb-colors-group" id="tb-colors-group">
+          <button class="tb-trigger" id="color-preview-btn" type="button" title="Colors" data-testid="color-preview">
+            <div class="color-preview" id="color-preview">
               <div class="primary" id="color-primary"></div>
               <div class="secondary" id="color-secondary"></div>
             </div>
-            <!-- Custom Premium Color Tools -->
-            <div class="colour-tools" id="premium-color-tools" style="display: none;">
-              <div class="color-wheel" id="color-wheel" title="Pick custom color"></div>
-              <button class="random-btn" id="action-random" data-testid="action-random" type="button"
-                title="Random color">🎲 Random</button>
-            </div>
-            <!-- Color selection grid palette options -->
+          </button>
+          <!-- Color Ring = Random Color -->
+          <button class="tool-btn tb-ring-btn" id="color-wheel" type="button" title="Random Color">🎨</button>
+          <!-- Popup: ALL color swatches (standard + premium) -->
+          <div class="tb-popup tb-popup-colors glass-panel" id="tb-popup-colors">
+            <div class="popup-color-label">Standard</div>
+            <div class="colors" id="color-grid-standard" data-testid="color-grid-standard"></div>
+            <div class="popup-color-label">Premium</div>
             <div class="colors" id="color-grid" data-tooltip="Click to choose a color" data-testid="color-grid"></div>
           </div>
         </div>
 
-        <!-- TOOLS + SIZE SECTION -->
-        <div class="panel-section">
-          <div class="section-label"><span class="ico">🖌</span> Tools</div>
-          <div class="tools-row">
-            <!-- Paint brush/implements selectors group (Pencil, Random Brush, Paint Bucket, Eraser) -->
-            <div class="toolbar-group-tools" id="tool-buttons">
-              <button class="tool-btn active" data-tool="pencil" data-testid="tool-pencil" type="button"
-                title="Brush">✏</button>
-              <button class="tool-btn" id="tool-rainbow" data-tool="rainbow" data-testid="tool-rainbow" type="button"
-                title="Random Brush" style="display: none;">🌈</button>
-              <button class="tool-btn" data-tool="bucket" data-testid="tool-bucket" type="button"
-                title="Paint Bucket">🪣</button>
-              <button class="tool-btn" data-tool="eraser" data-testid="tool-eraser" type="button"
-                title="Eraser">🧹</button>
-              <button class="tool-btn active" id="tool-cursor-toggle" data-testid="tool-cursor" type="button"
-                title="Toggle Custom Cursor">🖱️</button>
-            </div>
+        <div class="tb-divider"></div>
 
-            <!-- Standard Brush Size buttons -->
+        <!-- GROUP 2: Pencil → click shows size popup -->
+        <div class="tb-group tb-size-group" id="tb-size-group">
+          <button class="tool-btn active tb-trigger" data-tool="pencil" data-testid="tool-pencil" type="button" title="Brush">✏</button>
+          <!-- Size popup -->
+          <div class="tb-popup tb-popup-sizes glass-panel" id="tb-popup-sizes">
             <div class="sizes" id="size-picker" data-tooltip="Brush size" data-testid="size-picker">
-              <button class="size-btn" data-size="3" data-testid="size-3" type="button"><span
-                  class="dot s1"></span></button>
-              <button class="size-btn active" data-size="8" data-testid="size-8" type="button"><span
-                  class="dot s2"></span></button>
-              <button class="size-btn" data-size="16" data-testid="size-16" type="button"><span
-                  class="dot s3"></span></button>
-              <button class="size-btn" data-size="32" data-testid="size-32" type="button"><span
-                  class="dot s4"></span></button>
+              <button class="size-btn" data-size="3" data-testid="size-3" type="button"><span class="dot s1"></span></button>
+              <button class="size-btn active" data-size="8" data-testid="size-8" type="button"><span class="dot s2"></span></button>
+              <button class="size-btn" data-size="16" data-testid="size-16" type="button"><span class="dot s3"></span></button>
+              <button class="size-btn" data-size="32" data-testid="size-32" type="button"><span class="dot s4"></span></button>
             </div>
-
-
           </div>
         </div>
 
-        <!-- ACTIONS SECTION -->
-        <div class="panel-section">
-          <div class="toolbar-group-actions">
-            <button class="action-btn" id="action-undo" data-testid="action-undo" type="button" title="Undo">⟲</button>
-            <button class="action-btn" id="action-redo" data-testid="action-redo" type="button" style="display: none;"
-              disabled title="Redo">⟳</button>
-            <button class="action-btn danger" id="action-clear" data-testid="action-clear" type="button"
-              title="Clear Canvas">🗑</button>
+        <div class="tb-divider"></div>
+
+        <!-- GROUP 3: Other tools -->
+        <div class="tb-group" id="tool-buttons">
+          <button class="tool-btn" id="tool-rainbow" data-tool="rainbow" data-testid="tool-rainbow" type="button" title="Rainbow Brush" style="display:none;">🌈</button>
+          <button class="tool-btn" data-tool="bucket" data-testid="tool-bucket" type="button" title="Paint Bucket">🪣</button>
+          <button class="tool-btn" data-tool="eraser" data-testid="tool-eraser" type="button" title="Eraser">🧹</button>
+        </div>
+
+        <div class="tb-divider"></div>
+
+        <!-- GROUP 4: Actions -->
+        <div class="tb-group">
+          <button class="action-btn" id="action-undo" data-testid="action-undo" type="button" title="Undo">⟲</button>
+          <button class="action-btn" id="action-redo" data-testid="action-redo" type="button" style="display:none;" disabled title="Redo">⟳</button>
+          <button class="action-btn danger" id="action-clear" data-testid="action-clear" type="button" title="Clear Canvas">🗑</button>
+        </div>
+
+        <div class="tb-divider"></div>
+
+        <!-- GROUP 5: Shapes → hover shows shapes popup -->
+        <div class="tb-group tb-shapes-group" id="premium-shapes">
+          <button class="tool-btn tb-trigger" id="tb-shapes-trigger" type="button" title="Shapes (hover to see all)">⬡</button>
+          <!-- Shapes popup: square grid of small icons -->
+          <div class="tb-popup tb-popup-shapes glass-panel" id="tb-popup-shapes">
+            <div class="shapes-grid" id="shape-buttons"></div>
           </div>
         </div>
 
-        <!-- SHAPES SECTION (Premium Only) -->
-        <div class="panel-section" id="premium-shapes" style="display: none;">
-          <div class="section-label"><span class="ico">✦</span> Shapes</div>
-          <div class="shapes-grid" id="shape-buttons"></div>
-        </div>
-
-        <!-- Premium palette features activation toggle -->
-        <div class="premium-toggle-wrapper" data-testid="premium-toggle-wrapper">
-          <span class="toggle-label">
-            <span class="prem-icon">★</span> Enable Premium Colors
-          </span>
-          <button class="premium-toggle-switch" id="toggle-color-panel" data-testid="premium-toggle-switch"
-            aria-pressed="false" role="switch" type="button"></button>
-        </div>
       </section>
+
 
       <!-- Sidebar panel: Match interactive guesses feeds and text submissions -->
       <aside id="game-chat" class="glass-panel" data-testid="game-chat">
@@ -463,88 +443,10 @@
         <div class="chat-content" id="chat-content" data-testid="chat-content"></div>
       </aside>
       
-      <!-- Mobile Tabs for switching views -->
-      <div class="mobile-tabs" id="mobile-tabs" style="display: none;">
-        <button class="mobile-tab-btn active" data-target="chat">💬 Chat</button>
-        <button class="mobile-tab-btn" data-target="players">👥 Players</button>
-      </div>
     </div>
   </div>
 
-  <!-- =================== PREMIUM MODAL (UPI Payment Flow) =================== -->
-  <div class="modal" id="premium-modal" data-testid="premium-modal" style="display:none">
-    <div class="payment-card glass-panel" style="max-width:480px;width:100%;">
-      <div class="screw tl"></div>
-      <div class="screw tr"></div>
-      <div class="screw bl"></div>
-      <div class="screw br"></div>
-      <button class="modal-close" id="premium-close" aria-label="Close">×</button>
 
-      <!-- STEP 1: Pick & check username -->
-      <div id="upi-step1">
-        <div class="premium-crown">🔒</div>
-        <h2>Lock Your Username</h2>
-        <p class="lead">Lock your unique username and get <b>26 premium colors</b> for just <span class="upi-amount">₹20</span> (one-time)</p>
-        <ul class="benefits">
-          <li>✓ 26 exclusive premium colors every game</li>
-          <li>✓ Your username is permanently yours</li>
-          <li>✓ ⭐ Premium badge next to your name</li>
-          <li>✓ Support indie development</li>
-        </ul>
-        <div style="margin-top:16px;">
-          <input id="upi-username-input" type="text" class="join-input wood-input" placeholder="Enter your desired username" maxlength="21" style="width:100%;box-sizing:border-box;margin-bottom:10px;">
-          <button id="upi-check-btn" class="btn btn-primary" style="width:100%;">Check Availability →</button>
-          <p id="upi-check-result" class="utr-status" style="margin-top:10px;text-align:center;"></p>
-        </div>
-      </div>
-
-      <!-- STEP 2: Pay ₹20 -->
-      <div id="upi-step2" style="display:none;">
-        <div class="premium-crown">💰</div>
-        <h2>Pay <span class="upi-amount">₹20</span> for <span id="upi-step2-username" style="color:#6366F1;"></span></h2>
-        <p class="lead">Scan the QR code or tap the button below to pay</p>
-
-        <!-- QR Code (desktop) -->
-        <div id="upi-qr-section" style="text-align:center;margin:16px 0;">
-          <div id="upi-qrcode-container" style="display:inline-block;padding:12px;background:#fff;border-radius:12px;border:3px solid rgba(99,102,241,0.5);"></div>
-          <p style="font-size:13px;color:rgba(255,255,255,0.6);margin-top:8px;">Scan with GPay · PhonePe · Paytm · Any UPI app</p>
-        </div>
-
-        <!-- UPI Intent button (mobile) -->
-        <button id="upi-pay-btn" class="btn btn-play-green" style="width:100%;display:none;font-size:16px;padding:14px;"></button>
-
-        <p style="font-size:13px;color:rgba(255,255,255,0.5);margin:12px 0;text-align:center;">After paying, click below to enter your reference number</p>
-        <button id="upi-paid-btn" class="btn btn-primary" style="width:100%;">✅ I've Paid — Enter UTR Number →</button>
-      </div>
-
-      <!-- STEP 3: Submit UTR -->
-      <div id="upi-step3" style="display:none;">
-        <div class="premium-crown">🧾</div>
-        <h2>Enter Your UTR Number</h2>
-        <p class="lead">Find the 12-digit UTR / Reference number in your UPI app under transaction history</p>
-        <div style="margin-top:16px;">
-          <input id="upi-utr-input" type="tel" inputmode="numeric" class="join-input wood-input"
-            placeholder="e.g. 123456789012" maxlength="12" pattern="[0-9]{12}"
-            style="width:100%;box-sizing:border-box;margin-bottom:10px;letter-spacing:2px;font-size:18px;">
-          <button id="upi-submit-utr-btn" class="btn btn-primary" style="width:100%;">✅ Submit UTR</button>
-          <p id="utr-submit-status" class="utr-status" style="margin-top:10px;text-align:center;"></p>
-        </div>
-        <p style="font-size:12px;color:rgba(255,255,255,0.4);margin-top:16px;text-align:center;">We'll verify your payment within 2 hours and send you a confirmation.</p>
-      </div>
-
-      <!-- STEP 4: Success / Pending -->
-      <div id="upi-success" style="display:none;text-align:center;">
-        <div style="font-size:64px;margin:16px 0;">⏳</div>
-        <h2 style="color:#FFD700;">UTR Submitted!</h2>
-        <p class="lead">We received your UTR for <b>@<span id="upi-success-name"></span></b>.</p>
-        <p style="color:rgba(255,255,255,0.7);font-size:14px;">Our team will verify your ₹20 payment and unlock your premium colors within <b>2 hours</b>. Just come back and type your locked username to get your colors!</p>
-        <div style="background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.3);border-radius:12px;padding:16px;margin:16px 0;">
-          <p style="margin:0;font-size:13px;color:rgba(255,255,255,0.6);">📧 Questions? Email us at <a href="mailto:support@advscribbl.app" style="color:#6366F1;">support@advscribbl.app</a></p>
-        </div>
-        <button id="upi-success-close" class="btn btn-primary" style="width:100%;">Got it! 👍</button>
-      </div>
-    </div>
-  </div>
 
   <!-- =================== TOAST (In-game alerts notification panels) =================== -->
   <div id="toast" data-testid="toast"></div>
@@ -569,7 +471,6 @@
 
   <!-- Frontend logical layers imported modules scripts -->
   <script src="/js/auth.js?v=1.2.0"></script>
-  <script src="/js/payment.js?v=1.2.0"></script>
   <script src="/js/game.js?v=1.2.0"></script>
 </body>
 

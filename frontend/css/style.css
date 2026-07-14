@@ -1096,25 +1096,34 @@ select option {
 #game-wrapper {
   display: grid;
   grid-template-areas:
-    "bar     bar       bar"
-    "players canvas    chat"
-    "players toolbar   chat";
-  grid-template-columns: minmax(220px, 260px) minmax(0, 1fr) minmax(280px, 340px);
-  grid-template-rows: auto 600px auto;
+    "adL  bar      bar       bar      adR"
+    "adL  players  canvas    chat     adR";
+  grid-template-columns: 160px minmax(180px, 220px) minmax(600px, 800px) minmax(250px, 300px) 160px;
+  grid-template-rows: auto 600px;
   gap: 14px;
-  max-width: 1400px;
+  max-width: 1750px;
   margin: 0 auto;
   width: 100%;
   height: auto;
   box-sizing: border-box;
+  justify-content: center;
 }
+
+/* Ad Slot Styling */
+.ad-slot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.ad-left { grid-area: adL; }
+.ad-right { grid-area: adR; }
 
 #game-wrapper.is-drawing {
   grid-template-areas:
-    "bar     bar       bar"
-    "players canvas    toolbar"
-    "players chat      toolbar";
-  grid-template-rows: auto 600px 400px;
+    "adL  bar      bar       bar      adR"
+    "adL  players  canvas    chat     adR"
+    "adL  players  toolbar   chat     adR";
+  grid-template-rows: auto 600px 64px;
 }
 
 #game-bar {
@@ -1328,14 +1337,6 @@ select option {
 #game-canvas.tool-eraser canvas { cursor: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'><text y='20' font-size='20'>🧽</text></svg>") 12 12, crosshair; }
 #game-canvas.tool-fill canvas { cursor: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'><text y='20' font-size='20'>🪣</text></svg>") 4 20, crosshair; }
 
-/* Premium Chameleon Cursor */
-body.premium-cursor, body.premium-cursor * {
-  cursor: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 24 24'><text y='22' font-size='22'>🦎</text></svg>") 4 4, auto !important;
-}
-/* Ensure drawing tools override the global premium cursor on canvas */
-body.premium-cursor #game-canvas.tool-pencil canvas { cursor: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'><text y='20' font-size='20'>✏️</text></svg>") 0 24, crosshair !important; }
-body.premium-cursor #game-canvas.tool-eraser canvas { cursor: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'><text y='20' font-size='20'>🧽</text></svg>") 12 12, crosshair !important; }
-body.premium-cursor #game-canvas.tool-fill canvas { cursor: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'><text y='20' font-size='20'>🪣</text></svg>") 4 20, crosshair !important; }
 
 
 .overlay {
@@ -1726,37 +1727,159 @@ body.premium-cursor #game-canvas.tool-fill canvas { cursor: url("data:image/svg+
 #game-toolbar {
   grid-area: toolbar;
   display: flex;
-  flex-direction: column;
-  gap: 16px;
-  padding: 18px 20px 20px;
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 0 12px;
   box-sizing: border-box;
+  height: 56px;
+  align-items: center;
+  overflow: visible;
 }
 
+/* ── Toolbar Groups ── */
+.tb-group {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tb-divider {
+  width: 1px;
+  height: 32px;
+  background: rgba(141, 89, 38, 0.35);
+  flex-shrink: 0;
+}
+
+/* ── Popup panels (appear above on hover) ── */
+.tb-popup {
+  position: absolute;
+  bottom: calc(100% + 10px);
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 12px 14px;
+  border-radius: 14px;
+  z-index: 9999;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+  transform: translateX(-50%) translateY(6px);
+  white-space: nowrap;
+}
+
+.tb-group.show > .tb-popup,
+.tb-popup.show {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* Color preview trigger button */
+#color-preview-btn {
+  background: none;
+  border: none;
+  padding: 4px;
+  cursor: pointer;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+#color-preview-btn:hover,
+.tb-group.show > #color-preview-btn {
+  background: rgba(0,0,0,0.1);
+}
+
+/* Color ring (random) button */
+.tb-ring-btn {
+  font-size: 1.1rem;
+  width: 38px;
+  height: 38px;
+}
+
+/* Color grid popup */
+.tb-popup-colors {
+  left: 0;
+  transform: translateX(0) translateY(6px);
+  min-width: 340px;
+}
+.tb-group.show > .tb-popup-colors,
+.tb-popup-colors.show {
+  transform: translateX(0) translateY(0);
+}
+.tb-popup-colors .colors {
+  display: grid;
+  grid-template-columns: repeat(13, 1fr);
+  grid-auto-rows: 26px;
+  gap: 4px;
+}
+.popup-color-label {
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #b45309;
+  margin-bottom: 4px;
+  margin-top: 6px;
+}
+.popup-color-label:first-child {
+  margin-top: 0;
+}
+
+/* Size popup */
+.tb-popup-sizes {
+  min-width: 180px;
+}
+.tb-popup-sizes .sizes {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  padding: 0;
+}
+
+/* Shapes popup — square grid */
+.tb-popup-shapes {
+  right: 0;
+  left: auto;
+  transform: translateX(0) translateY(6px);
+  width: 252px;
+  padding: 12px;
+}
+.tb-group.show > .tb-popup-shapes,
+.tb-popup-shapes.show {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateX(0) translateY(0);
+}
+.tb-popup-shapes .shapes-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 6px;
+  width: 100%;
+}
+.tb-popup-shapes .shape-btn {
+  width: 32px;
+  height: 32px;
+  padding: 4px;
+  border-radius: 6px;
+}
+
+/* Legacy panel-section kept for compatibility */
 .panel-section {
   display: flex;
   flex-direction: column;
   gap: 10px;
-}
-
-.panel-section+.panel-section {
-  padding-top: 14px;
-  border-top: 2px solid #8d5926;
-}
-
-.section-label {
-  display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 0.78rem;
-  font-weight: 900;
-  letter-spacing: .08em;
-  color: #b45309;
-  text-transform: uppercase;
-  margin-left: 24px;
 }
-
-.section-label .ico {
-  font-size: 0.95rem;
+.panel-section+.panel-section {
+  padding-left: 20px;
+  border-left: 2px solid rgba(141, 89, 38, 0.3);
 }
 
 .colours-row,
@@ -1770,9 +1893,9 @@ body.premium-cursor #game-canvas.tool-fill canvas { cursor: url("data:image/svg+
 .color-preview {
   display: grid;
   place-items: center;
-  width: 48px;
-  height: 48px;
-  border-radius: 10px;
+  width: 38px;
+  height: 38px;
+  border-radius: 8px;
   background: rgba(0, 0, 0, 0.4);
   border: 1px solid var(--glass-border);
   position: relative;
@@ -1780,20 +1903,20 @@ body.premium-cursor #game-canvas.tool-fill canvas { cursor: url("data:image/svg+
 }
 
 .color-preview .primary {
-  width: 28px;
-  height: 28px;
-  border-radius: 6px;
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
   background: #000;
   border: 2px solid rgba(255, 255, 255, 0.15);
 }
 
 .color-preview .secondary {
   position: absolute;
-  bottom: 6px;
-  right: 6px;
-  width: 12px;
-  height: 12px;
-  border-radius: 4px;
+  bottom: 4px;
+  right: 4px;
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
   background: #FFF;
   border: 1px solid rgba(0, 0, 0, 0.2);
 }
@@ -1865,9 +1988,8 @@ body.premium-cursor #game-canvas.tool-fill canvas { cursor: url("data:image/svg+
   display: grid;
   grid-template-columns: repeat(13, 1fr);
   grid-auto-rows: 24px;
-  gap: 6px;
+  gap: 4px;
   flex: 1;
-  min-width: 280px;
 }
 
 .color-swatch {
@@ -2036,13 +2158,13 @@ body.premium-cursor #game-canvas.tool-fill canvas { cursor: url("data:image/svg+
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 44px;
-  height: 44px;
+  width: 38px;
+  height: 38px;
   background: #fffdf9;
   border: 2px solid #8d5926;
   color: #4a2c11;
   cursor: pointer;
-  font-size: 1.25rem;
+  font-size: 1.1rem;
   border-radius: 10px;
   transition: all 0.15s var(--tx);
   padding: 0;
@@ -2100,13 +2222,13 @@ body.premium-cursor #game-canvas.tool-fill canvas { cursor: url("data:image/svg+
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 44px;
-  height: 44px;
+  width: 38px;
+  height: 38px;
   border-radius: 10px;
   background: #fffdf9;
   border: 2px solid #8d5926;
   color: #4a2c11;
-  font-size: 1.25rem;
+  font-size: 1.1rem;
   cursor: pointer;
   transition: all .15s var(--tx);
   padding: 0;
@@ -2138,10 +2260,8 @@ body.premium-cursor #game-canvas.tool-fill canvas { cursor: url("data:image/svg+
 }
 
 .shapes-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(44px, 1fr));
+  display: flex;
   gap: 8px;
-  width: 100%;
 }
 
 .shape-btn {
@@ -2316,6 +2436,27 @@ body.premium-cursor #game-canvas.tool-fill canvas { cursor: url("data:image/svg+
 .chat-send:hover {
   background: var(--primary-hover);
   transform: translateY(-1px);
+}
+
+.chat-form.clue-mode .chat-send {
+  background: #f59e0b;
+  color: #fff;
+  font-size: 1.3rem;
+  box-shadow: 0 0 10px rgba(245, 158, 11, 0.4);
+}
+
+.chat-form.clue-mode .chat-send:hover {
+  background: #d97706;
+}
+
+.clue-transition {
+  animation: glow-pulse 1s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes glow-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); border-color: var(--border); }
+  50% { box-shadow: 0 0 12px 2px rgba(245, 158, 11, 0.5); border-color: #f59e0b; }
+  100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); border-color: var(--border); }
 }
 
 /* =========================================================
@@ -2494,6 +2635,9 @@ body.premium-cursor #game-canvas.tool-fill canvas { cursor: url("data:image/svg+
 }
 
 @media (max-width: 1024px) {
+  /* ============================================================
+     HOME PAGE
+     ============================================================ */
   .panels {
     grid-template-columns: 1fr;
   }
@@ -2507,61 +2651,411 @@ body.premium-cursor #game-canvas.tool-fill canvas { cursor: url("data:image/svg+
     grid-template-columns: 1fr;
   }
 
-  #game-wrapper {
-    grid-template-areas:
-      "bar"
-      "canvas"
-      "toolbar"
-      "tabs"
-      "tab-content";
-    grid-template-columns: 1fr;
-    grid-template-rows: auto minmax(280px, 400px) auto auto minmax(200px, 350px);
-    height: auto;
-  }
-
-  .mobile-tabs {
-    grid-area: tabs;
-    display: flex !important;
-    gap: 8px;
-    padding: 8px 0;
-    justify-content: center;
-  }
-
-  .mobile-tab-btn {
-    flex: 1;
-    padding: 12px;
-    background: rgba(255,255,255,0.1);
-    color: var(--text-muted);
-    border: 1px solid var(--glass-border);
-    border-radius: 8px;
-    font-weight: bold;
-    cursor: pointer;
-    transition: all 0.2s ease;
-  }
-
-  .mobile-tab-btn.active {
-    background: rgba(255,255,255,0.3);
-    color: var(--text-main);
-    border-color: var(--accent-gold);
-    box-shadow: 0 0 10px rgba(252,211,77,0.3);
-  }
-
-  /* Initially hide players, show chat (or whatever JS decides) */
-  .mobile-tab-view {
+  .ad-slot {
     display: none !important;
   }
-  .mobile-tab-view.active {
+
+  /* ============================================================
+     GAME CONTAINER — remove all padding/gap on mobile
+     ============================================================ */
+  #game {
+    padding: 0 !important;
+    gap: 0 !important;
+    min-height: 100svh;
+    overflow-x: hidden;
+  }
+
+  /* ============================================================
+     GAME WRAPPER — exact Skribbl.io 2-column grid
+     bar/canvas/toolbar span full width (2 cols)
+     players | chat split 50/50 at bottom
+     ============================================================ */
+  #game-wrapper,
+  #game-wrapper.is-drawing {
+    display: grid !important;
+    grid-template-areas:
+      "bar     bar"
+      "canvas  canvas"
+      "toolbar toolbar"
+      "players chat";
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto auto auto 1fr;
+    gap: 0 !important;
+    padding: 0 !important;
+    height: 100svh;
+    overflow: hidden;
+  }
+
+  /* ============================================================
+     STRIP ALL GLASS-PANEL STYLING FROM GAME ELEMENTS
+     ============================================================ */
+  #game-bar,
+  #game-canvas,
+  #game-toolbar,
+  #game-players,
+  #game-chat {
+    background: none !important;
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    filter: none !important;
+    outline: none !important;
+    overflow: hidden;
+  }
+
+  /* Hide screws */
+  #game-bar .screw,
+  #game-canvas .screw,
+  #game-toolbar .screw,
+  #game-players .screw,
+  #game-chat .screw {
+    display: none !important;
+  }
+
+  /* Reset glass-panel ::before/::after overlays */
+  #game-bar::before, #game-bar::after,
+  #game-canvas::before, #game-canvas::after,
+  #game-toolbar::before, #game-toolbar::after,
+  #game-players::before, #game-players::after,
+  #game-chat::before, #game-chat::after {
+    display: none !important;
+    content: none !important;
+  }
+
+  /* ============================================================
+     TOP BAR — white background, thin blue bottom border, compact
+     ============================================================ */
+  #game-bar {
+    grid-area: bar;
+    background: #fff !important;
+    border-bottom: 1px solid #3b3bdb !important;
+    padding: 2px 8px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    position: relative !important;
+    min-height: 44px !important;
+    z-index: 10;
+  }
+
+  /* Compact clock — no bg box on mobile */
+  #game-bar .game-bar-clock {
+    position: absolute !important;
+    top: 4px !important;
+    left: 8px !important;
+    background: none !important;
+    border: none !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+    min-width: 0 !important;
+    gap: 2px !important;
+    color: #222 !important;
+    font-size: 13px !important;
+    font-weight: 800 !important;
+  }
+
+  #game-bar .game-bar-clock .clock-icon {
+    font-size: 14px !important;
+  }
+
+  #game-bar .game-bar-clock .text {
+    font-size: 14px !important;
+    color: #222 !important;
+    font-weight: 800 !important;
+  }
+
+  /* Round counter — no bg box */
+  #game-bar .game-bar-round {
+    position: absolute !important;
+    top: 24px !important;
+    left: 8px !important;
+    background: none !important;
+    border: none !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+    font-size: 11px !important;
+    font-weight: 600 !important;
+    color: #555 !important;
+    white-space: nowrap;
+  }
+
+  /* Word area — compact */
+  #game-bar #game-word {
+    text-align: center !important;
+    margin: 0 auto !important;
+  }
+
+  #game-bar #game-word .description {
+    font-size: 10px !important;
+    color: #777 !important;
+    text-shadow: none !important;
+    letter-spacing: 0.1em !important;
+  }
+
+  #game-bar #game-word .word {
+    font-size: 16px !important;
+    color: #222 !important;
+    text-shadow: none !important;
+    letter-spacing: 0.08em !important;
+    font-weight: 900 !important;
+  }
+
+  /* Leave button — small on mobile */
+  #game-bar .game-bar-btn.danger {
+    position: absolute !important;
+    top: 10px !important;
+    right: 8px !important;
+    font-size: 11px !important;
+    padding: 3px 7px !important;
+    border-radius: 6px !important;
+  }
+
+  /* ============================================================
+     CANVAS — full width, zero padding/frame, fills grid row
+     ============================================================ */
+  #game-canvas {
+    grid-area: canvas;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: hidden !important;
+    border: none !important;
+    border-bottom: 1px solid #ddd !important;
+    display: block !important;
+  }
+
+  /* Remove ALL inner padding from canvas container */
+  #game-canvas > *:not(canvas):not(.overlay):not(.overlay-content) {
+    display: none !important;
+  }
+
+  #game-canvas canvas {
+    width: 100% !important;
+    height: auto !important;
+    aspect-ratio: 4 / 3;
+    border-radius: 0 !important;
+    display: block;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  /* ============================================================
+     TOOLBAR — horizontal, flat, white bg with blue borders
+     ============================================================ */
+  #game-toolbar {
+    grid-area: toolbar;
+    background: #fff !important;
+    border-bottom: 1px solid #ccc !important;
+    padding: 4px 0 !important;
+    display: none !important; /* hidden when not drawing */
+    flex-direction: column !important;
+    gap: 4px !important;
+    overflow: visible !important;
+  }
+
+  #game-wrapper.is-drawing #game-toolbar {
     display: flex !important;
   }
 
-  #game-chat, #game-players {
-    grid-area: tab-content;
-  }
-  
-  #game-players {
-    display: none; /* Hide players by default on mobile */
+  /* Hide the default color preview button, we will show the full palette */
+  #color-preview-btn {
+    display: none !important;
   }
 
+  /* Make color popup inline and static */
+  .tb-popup-colors {
+    position: static !important;
+    display: block !important;
+    transform: none !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
+    background: none !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 4px !important;
+  }
+
+  /* Hide popup labels */
+  .popup-color-label {
+    display: none !important;
+  }
+
+  /* Force color grid to display nicely in a row */
+  .tb-popup-colors .colors {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 2px !important;
+    justify-content: center !important;
+  }
+  
+  .tb-popup-colors .color-btn {
+    width: 22px !important;
+    height: 22px !important;
+    border-radius: 0 !important;
+    margin: 0 !important;
+  }
+
+  /* Bottom row of tools */
+  .tb-divider {
+    display: none !important; /* hide vertical dividers */
+  }
+
+  /* Toolbar popups go upward (for sizes/shapes) */
+  .tb-popup:not(.tb-popup-colors) {
+    bottom: 100%;
+    top: auto !important;
+    transform: translateY(-6px);
+  }
+
+  .tb-group.show > .tb-popup:not(.tb-popup-colors) {
+    transform: translateY(0);
+  }
+  
+  /* Make tool groups display in a single line */
+  #game-toolbar {
+    flex-direction: column !important;
+  }
+  
+  /* We need a wrapper or to make tb-group elements flex */
+  #game-toolbar > .tb-group {
+    display: flex;
+    justify-content: center;
+    gap: 4px;
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  /* ============================================================
+     PLAYERS — left 50%, flat, scrollable list, NO frame
+     ============================================================ */
+  #game-players {
+    grid-area: players;
+    display: flex !important;
+    flex-direction: column;
+    background: transparent !important;
+    border: none !important;
+    border-right: 1px solid #e0e0e0 !important;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+
+  #game-players .panel-title {
+    display: none !important;
+  }
+
+  #game-players .players-list {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0 !important;
+  }
+
+  #game-players .player-card {
+    padding: 5px 6px !important;
+    gap: 5px !important;
+    border-bottom: 1px solid #ebebeb !important;
+    background: #fff !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    border-left: none !important;
+    border-right: none !important;
+    border-top: none !important;
+  }
+
+  #game-players .player-card:nth-child(even) {
+    background: #f5f5f5 !important;
+  }
+
+  .player-card .player-rank {
+    font-size: 11px !important;
+    min-width: 16px !important;
+  }
+
+  .player-card .player-name {
+    font-size: 13px !important;
+    font-weight: 600 !important;
+  }
+
+  .player-card .player-score {
+    font-size: 11px !important;
+    color: #555 !important;
+  }
+
+  /* ============================================================
+     CHAT — right 50%, white bg, messages + form at bottom
+     ============================================================ */
+  #game-chat {
+    grid-area: chat;
+    display: flex !important;
+    flex-direction: column;
+    background: #fff !important;
+    overflow: hidden;
+    border: none !important;
+  }
+
+  /* Hide chat header and emoji bar on mobile */
+  #game-chat .panel-title {
+    display: none !important;
+  }
+
+  #game-chat .emoji-bar {
+    display: none !important;
+  }
+
+  /* Messages area grows, scrollable */
+  #game-chat .chat-content {
+    flex: 1;
+    overflow-y: auto;
+    order: 1;
+    padding: 4px 6px !important;
+    background: #fff !important;
+  }
+
+  /* Form at the very bottom */
+  #game-chat .chat-form {
+    order: 2;
+    border-top: 1px solid #ddd;
+    background: #f9f9f9 !important;
+    padding: 4px !important;
+    gap: 4px !important;
+    margin: 0 !important;
+  }
+
+  #game-chat .chat-form input {
+    padding: 8px 10px !important;
+    font-size: 0.85rem !important;
+    background: #fff !important;
+    border: 1px solid #ccc !important;
+    border-radius: 4px !important;
+    color: #333 !important;
+  }
+
+  #game-chat .chat-form input::placeholder {
+    color: #aaa !important;
+  }
+
+  .chat-send {
+    width: 36px !important;
+    height: 36px !important;
+    border-radius: 4px !important;
+    font-size: 1rem !important;
+  }
+
+  .chat-msg {
+    font-size: 13px !important;
+    padding: 2px 3px !important;
+    line-height: 1.35 !important;
+  }
+
+  .chat-msg .author {
+    font-size: 13px !important;
+    font-weight: 700 !important;
+  }
+
+  /* ============================================================
+     MISC
+     ============================================================ */
   .room {
     min-width: 0;
     max-width: 100%;
@@ -3670,46 +4164,59 @@ body.premium-cursor #game-canvas.tool-fill canvas { cursor: url("data:image/svg+
 
   /* HOME SCREEN */
   #home {
-    padding: 16px 12px;
+    padding: 8px;
   }
 
   .center-panel {
-    padding: 32px 16px !important;
-    min-height: auto;
+    padding: 16px 12px !important;
+    min-height: auto !important;
+    border-radius: 20px !important;
+    max-width: 95% !important;
+    margin: 0 auto !important;
   }
   
   .panel-inner {
-    gap: 24px !important;
+    gap: 12px !important;
   }
 
   .top-row {
     flex-direction: column !important;
     justify-content: center !important;
-    align-items: stretch !important;
-    gap: 24px !important;
+    align-items: center !important;
+    gap: 12px !important;
     height: auto !important;
   }
 
   .avatar-section {
     align-self: center !important;
+    transform: scale(0.75); /* Reduce size of avatar customizer */
+    transform-origin: center;
+    margin: -15px 0; /* Offset the scale gap */
   }
 
   .name-lang-column {
-    margin-top: 10px !important;
+    margin-top: 0 !important;
     width: 100%;
-    gap: 16px !important;
+    gap: 12px !important;
   }
 
   .name-lang-column input:not([type="radio"]),
   .name-lang-column select {
     width: 100% !important;
+    padding: 8px 12px !important; /* Smaller inputs */
+    font-size: 14px !important;
+    height: 40px !important;
+  }
+  
+  .mode-selector {
+    font-size: 13px !important;
   }
 
   .cta-row {
-    flex-direction: column !important;
+    flex-direction: row !important; /* Keep buttons side by side if they fit, or column */
     height: auto !important;
-    gap: 16px !important;
-    margin-top: 24px !important;
+    gap: 10px !important;
+    margin-top: 8px !important;
   }
 
   .cta-row .play-btn,
@@ -3722,20 +4229,22 @@ body.premium-cursor #game-canvas.tool-fill canvas { cursor: url("data:image/svg+
     display: grid !important;
     grid-template-columns: 1fr !important;
     height: auto !important;
-    gap: 16px !important;
-    margin-top: 24px !important;
+    gap: 10px !important;
+    margin-top: 16px !important;
   }
 
   .join-row .join-input,
   .join-row .join-btn {
     width: 100% !important;
+    padding: 8px 12px !important; /* Smaller inputs */
+    font-size: 14px !important;
+    height: 40px !important;
   }
 
   /* GAME SCREEN */
-  #game-wrapper {
-    grid-template-rows: auto minmax(250px, 1fr) auto minmax(200px, 30vh) minmax(100px, 20vh) !important;
-    padding: 8px !important;
-    gap: 8px !important;
+  /* Additional mobile refinements for very small screens */
+  #game-toolbar {
+    padding: 2px 4px !important;
   }
 
   .toolbar-row {
@@ -4011,3 +4520,4 @@ body.premium-cursor #game-canvas.tool-fill canvas { cursor: url("data:image/svg+
 .result.active .podest-1 { animation-delay: 0.15s; }
 .result.active .podest-2 { animation-delay: 0s; }
 .result.active .podest-3 { animation-delay: 0.3s; }
+

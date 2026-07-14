@@ -1,7 +1,7 @@
 /**
  * AdvScribbl Backend — Express + Socket.io + PostgreSQL
  * No-auth mode: players join by username directly (like skribbl.io)
- * Premium is tied to locked usernames via UPI payment.
+ * Premium features are free for all users — no payment required.
  */
 require('dotenv').config();
 
@@ -12,7 +12,6 @@ const cors       = require('cors');
 const bodyParser = require('body-parser');
 const { Server } = require('socket.io');
 
-const { router: paymentRouter } = require('./routes/payment');
 const { q }                     = require('./db');
 const { GameEngine }            = require('./gameEngine');
 const { getLanguageList }       = require('./wordBanks');
@@ -66,8 +65,6 @@ setInterval(() => {
 }, 5 * 60 * 1000);
 
 // ===================== ROUTES =====================
-app.use('/api/payment', rateLimit(20, 60_000), paymentRouter);
-
 // Health + meta
 app.get('/api/',          (req, res) => res.json({ ok: true, service: 'advscribbl' }));
 app.get('/api/health',    (req, res) => res.json({ ok: true }));
@@ -80,18 +77,10 @@ app.get('/api/admin/stats', async (req, res) => {
     return res.status(403).json({ error: 'Forbidden' });
   }
   try {
-    const totalLockedObj   = await q.statsTotalLocked();
-    const premiumUsersObj  = await q.statsPremiumUsers();
-    const totalRevenueObj  = await q.statsTotalRevenue();
-    const allRooms         = Array.from(engine.rooms.values());
-    const activeRooms      = allRooms.length;
-    const activePlayers    = allRooms.reduce((acc, r) => acc + r.realPlayerCount(), 0);
+    const allRooms      = Array.from(engine.rooms.values());
+    const activeRooms   = allRooms.length;
+    const activePlayers = allRooms.reduce((acc, r) => acc + r.realPlayerCount(), 0);
     res.json({
-      database: {
-        totalLocked:  totalLockedObj?.count  || 0,
-        premiumUsers: premiumUsersObj?.count || 0,
-        totalRevenue: `₹${totalRevenueObj?.total || 0}`,
-      },
       live: { activeRooms, activePlayers }
     });
   } catch (err) {
@@ -143,21 +132,13 @@ const io = new Server(server, {
 const engine = new GameEngine(io);
 
 // ===================== SOCKET MIDDLEWARE =====================
-// No JWT — anyone can connect. We just check if username is premium.
-io.use(async (socket, next) => {
+// No JWT — anyone can connect. All users get premium features for free.
+io.use((socket, next) => {
   const rawName = (socket.handshake.auth?.name || '').trim().slice(0, 21);
   if (!rawName) return next(new Error('NAME_REQUIRED'));
-  try {
-    const isPremium = await q.isUsernamePremium(rawName);
-    socket.playerName = rawName;
-    socket.hasPremium = isPremium;
-    next();
-  } catch (err) {
-    console.error('[socket auth]', err);
-    socket.playerName = rawName;
-    socket.hasPremium = false;
-    next();
-  }
+  socket.playerName = rawName;
+  socket.hasPremium = true; // All users get premium features for free
+  next();
 });
 
 const MAX_CMDS_PER_PACKET = 200;
@@ -199,13 +180,30 @@ io.on('connection', (socket) => {
 
       // Global name uniqueness check
       let nameTaken = false;
+      let stolenPlayer = null;
+      let stolenRoom = null;
       for (const r of engine.rooms.values()) {
-        if (r.players.some((p) => !p.bot && p.name.toLowerCase() === playerName.toLowerCase())) {
-          nameTaken = true;
+        const p = r.players.find((p) => !p.bot && p.name.toLowerCase() === playerName.toLowerCase());
+        if (p) {
+          if (p.ip === ip) {
+            stolenPlayer = p;
+            stolenRoom = r;
+          } else {
+            nameTaken = true;
+          }
           break;
         }
       }
-      if (nameTaken) {
+      if (stolenPlayer) {
+        if (engine.disconnectTimers && engine.disconnectTimers.has(stolenPlayer.id)) {
+          clearTimeout(engine.disconnectTimers.get(stolenPlayer.id));
+          engine.disconnectTimers.delete(stolenPlayer.id);
+        } else {
+          const oldSock = io.sockets.sockets.get(stolenPlayer.socketId);
+          if (oldSock) oldSock.disconnect(true);
+        }
+        stolenRoom.removePlayer(stolenPlayer.id, 0);
+      } else if (nameTaken) {
         return socket.emit('joinerr', 6);
       }
 
@@ -277,8 +275,26 @@ io.on('connection', (socket) => {
           room.receiveDrawCommands(playerId, data);
         }
         break;
-      case 20: room.clearCanvas(playerId); break;
-      case 21: if (typeof data === 'number') room.undoCanvas(playerId, data); break;
+      case 20: 
+        if (!socket.drawTs) socket.drawTs = [];
+        {
+          const now = Date.now();
+          socket.drawTs = socket.drawTs.filter(t => now - t < 1000);
+          socket.drawTs.push(now);
+          if (socket.drawTs.length > 25) break;
+        }
+        room.clearCanvas(playerId); 
+        break;
+      case 21: 
+        if (typeof data === 'number') {
+          if (!socket.drawTs) socket.drawTs = [];
+          const now = Date.now();
+          socket.drawTs = socket.drawTs.filter(t => now - t < 1000);
+          socket.drawTs.push(now);
+          if (socket.drawTs.length > 25) break;
+          room.undoCanvas(playerId, data); 
+        }
+        break;
       case 22:
         if (room.type === 1 && playerId === room.ownerId) {
           if (data && (typeof data === 'string' || typeof data === 'object'))
@@ -352,7 +368,7 @@ const TERMS_HTML = `<!doctype html><html><head><meta charset="utf-8"><title>Term
     <h1 style="color:var(--accent-gold);">Terms of Service</h1>
     <p>By using AdvScribbl you agree to these terms. The Service is provided "as is".</p>
     <h2>1. Acceptable Use</h2><p>No hate speech, harassment, or illegal content. Violators will be banned.</p>
-    <h2>2. Premium Purchases</h2><p>The ₹20 Premium upgrade locks your username and grants lifetime access to the premium color palette. Payments are made directly via UPI and are non-refundable except where required by law.</p>
+    <h2>2. Fair Use</h2><p>No hate speech, harassment, or illegal content. Violators will be banned.</p>
     <h2>3. Support</h2><p>For help, email <a href="mailto:${SUPPORT}">${SUPPORT}</a>.</p>
     <h2>4. Liability</h2><p>We are not liable for user-generated content or service interruptions.</p>
   </div>

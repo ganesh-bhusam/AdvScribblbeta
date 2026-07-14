@@ -169,6 +169,24 @@ try {
       console.log(`[wordBanks] Merged en_english.json. Total English words: ${WORD_BANKS[0].words.length}`);
     }
 
+    // Dynamically load parsed data for Indian languages and English from the script extraction
+    const parsedMap = {
+      0: 'parsed_english.json',
+      1: 'parsed_hinglish.json',
+      2: 'parsed_tamilglish.json',
+      7: 'parsed_kannadaglish.json',
+      8: 'parsed_malayalaglish.json'
+    };
+    for (const [idStr, filename] of Object.entries(parsedMap)) {
+      const p = path.join(BANKS_DIR, filename);
+      if (fs.existsSync(p)) {
+        const data = JSON.parse(fs.readFileSync(p, 'utf8').replace(/^\uFEFF/, ''));
+        const id = Number(idStr);
+        WORD_BANKS[id].words = Array.from(new Set([...(WORD_BANKS[id].words), ...data.words.value]));
+        console.log(`[wordBanks] Merged ${filename}. Total words for ${WORD_BANKS[id].name}: ${WORD_BANKS[id].words.length}`);
+      }
+    }
+
     // Load German
     const dePath = path.join(BANKS_DIR, 'de_german.json');
     if (fs.existsSync(dePath)) {
