@@ -813,7 +813,7 @@
   function onTimerTick(t) {
     $('game-clock').querySelector('.text').textContent = t;
     if (t === 10 && room && room.type === 1) {
-      playSound('let-me-tell-you-something.mp3');
+      playSound('tick');
     }
     
     // Clue mode for drawer in last 10 seconds
@@ -1185,7 +1185,7 @@
       if (drawer) drawer.drawn = true;
       const sc = s.data?.scores || [];
       let anyoneGuessed = false;
-      for (let i = 0; i < sc.length; i += 3) {
+      for (let i = 0; i < sc.length; i += 4) {
         const pid = sc[i], score = sc[i + 1], delta = sc[i + 2];
         const p = players.find((x) => x.id === pid);
         if (p) { 

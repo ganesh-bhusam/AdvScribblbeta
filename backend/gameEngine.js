@@ -99,7 +99,20 @@ class Room {
         this.broadcast(17, next.id);
       }
     }
-    if (this.currentDrawerId === playerId && this.state.id === STATE.j) {
+    // [FIX 1] Also abort if drawer leaves during word-selection phase (STATE.V)
+    // Without this, the game would ghost-start with no drawer and freeze guessers.
+    if (this.currentDrawerId === playerId && this.state.id === STATE.V) {
+      clearTimeout(this.timer);
+      this.roundEndReason = 2;
+      // Skip to next drawer — or end round if queue empty
+      if (this.drawerQueue.length > 0) {
+        this.nextDrawer();
+      } else if (this.round < this.settings[3]) {
+        this.startRound();
+      } else {
+        this.gameOver();
+      }
+    } else if (this.currentDrawerId === playerId && this.state.id === STATE.j) {
       this.roundEndReason = 2;
       this.endDrawingPhase();
     }
@@ -319,10 +332,13 @@ class Room {
     // AFK Kick Timer for drawer
     const drawer = this.players.find((p) => p.id === this.currentDrawerId);
     if (drawer && !drawer.bot) {
+      // [FIX 2] Reset the hasDrawn flag each new round so the check is fresh
+      drawer.hasDrawn = false;
       clearTimeout(this.afkTimer);
       this.afkTimer = setTimeout(() => {
         if (this.state.id === STATE.j && this.currentDrawerId === drawer.id) {
-          if (this.drawCommands.length === 0) {
+          // [FIX 2] Only kick if they genuinely never drew anything this round
+          if (!drawer.hasDrawn) {
             this.broadcast(30, { id: 0, msg: `${drawer.name} was kicked for not drawing.` });
             this.sendTo(drawer.id, 100, 1);
             this.removePlayer(drawer.id, 1);
@@ -446,6 +462,10 @@ class Room {
     // Hard cap on drawCommands array size to prevent memory bloat
     if (this.drawCommands.length + cmds.length > 50000) return;
     
+    // [FIX 2] Mark drawer as active so AFK timer never falsely kicks an active drawer
+    const drawerRef = this.players.find((p) => p.id === playerId);
+    if (drawerRef) drawerRef.hasDrawn = true;
+    
     for (const c of cmds) this.drawCommands.push(c);
     // broadcast to non-drawers only
     for (const p of this.players) {
@@ -457,6 +477,9 @@ class Room {
   }
   clearCanvas(playerId) {
     if (playerId !== this.currentDrawerId) return;
+    // [FIX 2] Canvas clear also counts as drawing activity
+    const drawerRef = this.players.find((p) => p.id === playerId);
+    if (drawerRef) drawerRef.hasDrawn = true;
     this.drawCommands = [];
     this.broadcast(20, null);
   }
@@ -464,6 +487,9 @@ class Room {
     if (playerId !== this.currentDrawerId) return;
     if (typeof newLen !== 'number') return;
     if (newLen < 0 || newLen > this.drawCommands.length) return;
+    // [FIX 2] Undo also counts as drawing activity
+    const drawerRef = this.players.find((p) => p.id === playerId);
+    if (drawerRef) drawerRef.hasDrawn = true;
     this.drawCommands.length = newLen;
     this.broadcast(21, newLen);
   }
