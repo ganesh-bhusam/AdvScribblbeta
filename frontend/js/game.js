@@ -1624,7 +1624,7 @@
     
     if (!isHiddenMode && currentState === STATE.j && currentDrawerId !== me && !hasGuessed && wordHints && wordHints.length > 0) {
       const targetLen = wordHints.filter(c => c !== ' ').length;
-      const guessLen = t.replace(/\s/g, '').length;
+      const guessLen = t.replace(/[^a-zA-Z0-9]/g, '').length;
       if (targetLen > 0 && guessLen !== targetLen) {
         addChatSystem(`Your guess (${guessLen} letters) is the wrong length!`, 'error');
         inp.value = '';
