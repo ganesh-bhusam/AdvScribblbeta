@@ -1616,6 +1616,19 @@
     const inp = $('chat-input');
     const t = inp.value.trim();
     if (!t) return;
+
+    // Smart Chat Interception (Anti-Spam)
+    const isHiddenMode = room && room.settings && room.settings[6] === 1;
+    if (!isHiddenMode && currentState === STATE.j && currentDrawerId !== me && wordHints && wordHints.length > 0) {
+      const targetLen = wordHints.filter(c => c !== ' ').length;
+      const guessLen = t.replace(/\s/g, '').length;
+      if (targetLen > 0 && guessLen !== targetLen) {
+        addChatSystem(`Your guess (${guessLen} letters) is the wrong length!`, 'error');
+        inp.value = '';
+        return; // Intercept
+      }
+    }
+
     send(30, t);
     inp.value = '';
   });
@@ -2013,10 +2026,14 @@
     const p = canvasCoord(e);
     if (!drawing) return;
     if (tool === 'pencil' || tool === 'eraser' || tool === 'rainbow') {
-      // Skip if barely moved (1px threshold — lower than before to capture slow strokes)
       const dx = p.x - lastPoint.x;
       const dy = p.y - lastPoint.y;
-      if (dx * dx + dy * dy < 1) return;
+      // Phase 4: Dynamic Path Simplification
+      // Instead of a tiny 1px threshold, we use a dynamic threshold based on brush size to drastically reduce network load.
+      // The Bézier curves will naturally interpolate the missing points perfectly.
+      const distSq = dx * dx + dy * dy;
+      const dynamicThreshold = Math.max(16, brushSize * 1.5);
+      if (distSq < dynamicThreshold) return;
 
       let usedColor = colorIndex;
       if (tool === 'eraser') usedColor = secondaryColorIndex;

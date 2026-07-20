@@ -303,7 +303,7 @@ class Room {
 
     const drawtime = this.settings[2];
     this.startTime = Date.now();
-    
+
     // Reset emoji counts for all players at the start of a new drawing phase
     this.players.forEach(p => p.emojiCount = 0);
 
@@ -434,7 +434,7 @@ class Room {
     } catch (e) {
       console.error('Error in gameOver state transition:', e);
     }
-    
+
     this.timer = setTimeout(() => {
       try {
         // Reset to lobby
@@ -458,14 +458,14 @@ class Room {
     if (playerId !== this.currentDrawerId) return;
     if (this.state.id !== STATE.j) return;
     if (!Array.isArray(cmds)) return;
-    
+
     // Hard cap on drawCommands array size to prevent memory bloat
     if (this.drawCommands.length + cmds.length > 50000) return;
-    
+
     // [FIX 2] Mark drawer as active so AFK timer never falsely kicks an active drawer
     const drawerRef = this.players.find((p) => p.id === playerId);
     if (drawerRef) drawerRef.hasDrawn = true;
-    
+
     for (const c of cmds) this.drawCommands.push(c);
     // broadcast to non-drawers only
     for (const p of this.players) {
@@ -497,11 +497,11 @@ class Room {
   receiveEmoji(playerId, emojiStr) {
     const p = this.players.find((x) => x.id === playerId);
     if (!p) return;
-    
+
     // Server-side check for max 5 emojis per drawing round
     p.emojiCount = p.emojiCount || 0;
     if (p.emojiCount >= 15) return;
-    
+
     p.emojiCount++;
     this.broadcast(33, { id: playerId, emoji: emojiStr }, p.socketId);
   }
@@ -513,6 +513,17 @@ class Room {
     if (msg.length > 100) msg = msg.slice(0, 100);
     const player = this.players.find((p) => p.id === playerId);
     if (!player) return;
+
+    // Automated Profanity Shadow-Muting (Phase 3)
+    const toxicRegex = /\b(nigger|nigga|faggot|retard|kys)\b/i;
+    if (toxicRegex.test(msg)) {
+      player.shadowMuted = true;
+    }
+    if (player.shadowMuted) {
+      // Fake broadcast back to the toxic player only
+      this.sendTo(playerId, 30, { id: playerId, msg });
+      return;
+    }
 
     // ---- Spam detection (packet id:32 / "Oa") ----
     // Keep a sliding window of recent chat timestamps; if > 4 messages in 3 s,
@@ -708,10 +719,10 @@ class Room {
   }
   getWordChoices(count) {
     const useOnly = !!this.settings[7];
-    
+
     // Prevent repeats from customWords
     let availableCustom = this.customWords.filter(w => !this.pastWords.has(w));
-    
+
     // If we need custom words but don't have enough fresh ones, reset history
     if (useOnly && this.customWords.length >= count && availableCustom.length < count) {
       this.pastWords.clear();
@@ -792,7 +803,7 @@ class Room {
   updateSetting(playerId, settingIdx, value) {
     if (playerId !== this.ownerId) return;
     if (settingIdx < 0 || settingIdx > 7) return;
-    
+
     // Bounds validation to prevent crashes
     if (typeof value !== 'number') return;
     if (settingIdx === 1) value = Math.max(2, Math.min(20, value)); // slots
@@ -800,7 +811,7 @@ class Room {
     if (settingIdx === 3) value = Math.max(1, Math.min(10, value)); // rounds
     if (settingIdx === 4) value = Math.max(1, Math.min(10, value)); // wordcount
     if (settingIdx === 5) value = Math.max(0, Math.min(10, value)); // hints
-    
+
     this.settings[settingIdx] = value;
     this.broadcast(12, { id: settingIdx, val: value });
   }
