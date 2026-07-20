@@ -1743,8 +1743,8 @@
       // automatically switch back to pencil so the chosen color is used immediately.
       if (tool === 'rainbow') {
         tool = 'pencil';
-        document.querySelectorAll('#tool-buttons .tool-btn').forEach((x) => x.classList.remove('active'));
-        const pencilBtn = document.querySelector('#tool-buttons .tool-btn[data-tool="pencil"]');
+        document.querySelectorAll('.tool-btn[data-tool]').forEach((x) => x.classList.remove('active'));
+        const pencilBtn = document.querySelector('.tool-btn[data-tool="pencil"]');
         if (pencilBtn) pencilBtn.classList.add('active');
         updateCanvasCursor();
       }
@@ -1809,9 +1809,9 @@
     }
   });
 
-  document.querySelectorAll('#tool-buttons .tool-btn').forEach((b) => {
+  document.querySelectorAll('.tool-btn[data-tool]').forEach((b) => {
     b.addEventListener('click', () => {
-      document.querySelectorAll('#tool-buttons .tool-btn').forEach((x) => x.classList.remove('active'));
+      document.querySelectorAll('.tool-btn[data-tool]').forEach((x) => x.classList.remove('active'));
       document.querySelectorAll('.shape-btn').forEach((x) => x.classList.remove('active'));
       b.classList.add('active');
       tool = b.dataset.tool;
@@ -2295,7 +2295,7 @@
       let px1, py1, px2, py2;
       if (lastRenderedCmd && lastRenderedCmd[0] === 0) {
         px1 = lastRenderedCmd[3]; py1 = lastRenderedCmd[4]; px2 = lastRenderedCmd[5]; py2 = lastRenderedCmd[6];
-        if (x1 === px2 && y1 === py2 && colIdx === lastRenderedCmd[1] && size === lastRenderedCmd[2]) {
+        if (x1 === px2 && y1 === py2 && size === lastRenderedCmd[2]) {
           isContinuous = true;
         }
       }
@@ -2583,7 +2583,7 @@
       b.addEventListener('click', (ev) => {
         ev.preventDefault();
         document.querySelectorAll('.shape-btn').forEach(x => x.classList.remove('active'));
-        document.querySelectorAll('#tool-buttons .tool-btn').forEach(x => x.classList.remove('active'));
+        document.querySelectorAll('.tool-btn[data-tool]').forEach(x => x.classList.remove('active'));
         b.classList.add('active');
         tool = 'shape';
         updateCanvasCursor();

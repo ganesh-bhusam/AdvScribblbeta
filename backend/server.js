@@ -195,14 +195,14 @@ io.on('connection', (socket) => {
         }
       }
       if (stolenPlayer) {
+        // Only allow session reclaiming if the socket is actually disconnected
         if (engine.disconnectTimers && engine.disconnectTimers.has(stolenPlayer.id)) {
           clearTimeout(engine.disconnectTimers.get(stolenPlayer.id));
           engine.disconnectTimers.delete(stolenPlayer.id);
+          stolenRoom.removePlayer(stolenPlayer.id, 0);
         } else {
-          const oldSock = io.sockets.sockets.get(stolenPlayer.socketId);
-          if (oldSock) oldSock.disconnect(true);
+          return socket.emit('joinerr', 6);
         }
-        stolenRoom.removePlayer(stolenPlayer.id, 0);
       } else if (nameTaken) {
         return socket.emit('joinerr', 6);
       }
@@ -213,13 +213,22 @@ io.on('connection', (socket) => {
       } else if (joinId && joinId !== 0 && joinId !== '0') {
         room = engine.getRoom(String(joinId));
         if (!room)                              return socket.emit('joinerr', 1);
-        if (room.players.length >= room.settings[1]) return socket.emit('joinerr', 2);
+        if (room.bannedIPs.has(ip))             return socket.emit('joinerr', 4);
+        if (room.kickedIPs.has(ip))             return socket.emit('joinerr', 3);
+        if (room.players.length >= room.settings[1]) {
+          const botIdx = room.players.findIndex(p => p.bot);
+          if (botIdx !== -1) {
+            room.removePlayer(room.players[botIdx].id, 0);
+          } else {
+            return socket.emit('joinerr', 2);
+          }
+        }
         if (engine.deletionTimeouts.has(room.id)) {
           clearTimeout(engine.deletionTimeouts.get(room.id));
           engine.deletionTimeouts.delete(room.id);
         }
       } else {
-        room = engine.publicRoomForLang(langId, null, modeId) || engine.createPublic(langId, modeId);
+        room = engine.publicRoomForLang(langId, ip, modeId) || engine.createPublic(langId, modeId);
       }
 
       const player = {

@@ -4,8 +4,8 @@ This guide contains the exact commands you need to run on your InterServer VPS t
 
 ## Prerequisites
 1. You have purchased an InterServer VPS (Ubuntu 22.04 or 24.04).
-2. You can SSH into your VPS: `ssh root@<YOUR_VPS_IP>`.
-3. You have logged into your domain registrar (where you bought `advscribbl.co.in`) and pointed the **A Record** to your `<YOUR_VPS_IP>`.
+2. You can SSH into your VPS: `ssh root@162.35.184.176`.
+3. You have logged into your domain registrar (where you bought `advscribbl.co.in`) and pointed the **A Record** to your `162.35.184.176`.
 
 ---
 

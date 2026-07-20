@@ -39,8 +39,8 @@ class Room {
     this.guessedCount = 0;
     this.lastActivity = Date.now();
     // Moderation
-    this.kickedUserIds = new Set();   // userIds the room kicked (cannot rejoin)
-    this.bannedUserIds = new Set();   // userIds the room banned (cannot rejoin)
+    this.kickedIPs = new Set();   // IPs the room kicked (cannot rejoin)
+    this.bannedIPs = new Set();   // IPs the room banned (cannot rejoin)
     this.votekicks = new Map();       // targetPlayerId -> Set<voterPlayerIds>
     // Drawing rating (thumbs up/down per drawing)
     this.ratings = new Map();         // raterPlayerId -> 0|1 for current drawing
@@ -115,6 +115,14 @@ class Room {
     } else if (this.currentDrawerId === playerId && this.state.id === STATE.j) {
       this.roundEndReason = 2;
       this.endDrawingPhase();
+    } else if (this.state.id === STATE.j && this.currentDrawerId !== playerId) {
+      // A guesser left. Check if all remaining humans have guessed.
+      const eligibleGuessers = this.players.filter((p) => p.id !== this.currentDrawerId && !p.bot);
+      const allGuessed = eligibleGuessers.length > 0 && eligibleGuessers.every((p) => p.guessed);
+      if (allGuessed) {
+        this.roundEndReason = 0;
+        this.endDrawingPhase();
+      }
     }
     // Clean up any bot-only or empty room (prevents memory leak)
     const count = this.realPlayerCount();
@@ -130,8 +138,8 @@ class Room {
       this.revealedHints = [];
       this.players.forEach((p) => (p.score = 0));
       this.changeState(this.type === 1 ? STATE.J : STATE.G, 0, null);
-    } else if (this.players.length < 2 && this.state.id !== STATE.G && this.state.id !== STATE.J) {
-      // Abort the game if only 1 player remains (including bots) and we aren't in the lobby
+    } else if (this.realPlayerCount() < 2 && this.state.id !== STATE.G && this.state.id !== STATE.J) {
+      // Abort the game if only 1 human player remains (including bots) and we aren't in the lobby
       if (this.state.id === STATE.K) {
         // Just cancel the start countdown
         clearTimeout(this.startCountdownTimer);
@@ -147,6 +155,17 @@ class Room {
   }
 
   toLobbyInit(meId) {
+    // [Phase 2 FIX] Ensure drawer gets actual word/choices upon reconnecting mid-round
+    let stateObj = this.state;
+    if (this.state && (this.state.id === STATE.j || this.state.id === STATE.V) && meId === this.currentDrawerId) {
+      stateObj = JSON.parse(JSON.stringify(this.state));
+      if (this.state.id === STATE.j && stateObj.data) {
+        stateObj.data.word = this.currentWord;
+      } else if (this.state.id === STATE.V && stateObj.data) {
+        stateObj.data.words = this.pendingChoices;
+      }
+    }
+
     return {
       me: meId,
       type: this.type,
@@ -155,7 +174,7 @@ class Room {
       users: this.players.map((p) => this.publicPlayer(p)),
       round: this.round,
       owner: this.ownerId,
-      state: this.state,
+      state: stateObj,
       drawCommands: this.drawCommands,
     };
   }
@@ -204,6 +223,7 @@ class Room {
   }
   startPrivate() {
     if (this.type !== 1) return;
+    if (this.state.id !== STATE.J) return; // [Phase 3 FIX] Prevent state re-entrancy
     if (this.players.length < 2) {
       // notify "need at least 2 players"
       this.broadcast(31, { id: 0 });
@@ -335,6 +355,7 @@ class Room {
       // [FIX 2] Reset the hasDrawn flag each new round so the check is fresh
       drawer.hasDrawn = false;
       clearTimeout(this.afkTimer);
+      const afkTimeMs = Math.min(35000, Math.max(10000, drawtime * 1000 - 5000));
       this.afkTimer = setTimeout(() => {
         if (this.state.id === STATE.j && this.currentDrawerId === drawer.id) {
           // [FIX 2] Only kick if they genuinely never drew anything this round
@@ -345,7 +366,7 @@ class Room {
             this.kickPlayerSocket(drawer);
           }
         }
-      }, 35000); // 35 seconds
+      }, afkTimeMs);
     }
 
     // If drawer is a bot, generate some doodles
@@ -459,20 +480,23 @@ class Room {
     if (this.state.id !== STATE.j) return;
     if (!Array.isArray(cmds)) return;
 
+    // Validate command shape to prevent memory bombs
+    const validCmds = cmds.filter(c => Array.isArray(c) && c.length <= 8 && c.every(n => typeof n === 'number'));
+
     // Hard cap on drawCommands array size to prevent memory bloat
-    if (this.drawCommands.length + cmds.length > 50000) return;
+    if (this.drawCommands.length + validCmds.length > 50000) return;
 
     // [FIX 2] Mark drawer as active so AFK timer never falsely kicks an active drawer
     const drawerRef = this.players.find((p) => p.id === playerId);
     if (drawerRef) drawerRef.hasDrawn = true;
 
-    for (const c of cmds) this.drawCommands.push(c);
+    for (const c of validCmds) this.drawCommands.push(c);
     // broadcast to non-drawers only
     for (const p of this.players) {
       if (p.bot) continue;
       if (p.id === this.currentDrawerId) continue;
       const sock = this.io.sockets.sockets.get(p.socketId);
-      if (sock) sock.emit('data', { id: 19, data: cmds });
+      if (sock) sock.emit('data', { id: 19, data: validCmds });
     }
   }
   clearCanvas(playerId) {
@@ -534,6 +558,8 @@ class Room {
     ts.push(now);
     this.chatTs.set(playerId, ts);
     if (ts.length > 4) {
+      // Clear timestamps so they don't get overlapping strikes for a single burst
+      this.chatTs.set(playerId, []);
       player.spamWarnCount = (player.spamWarnCount || 0) + 1;
       if (player.spamWarnCount >= 3) {
         this.removePlayer(playerId, 1); // Reason 1 is typically used for Kick
@@ -620,7 +646,7 @@ class Room {
     if (actorId !== this.ownerId) return;
     const target = this.players.find((p) => p.id === targetId);
     if (!target || target.id === this.ownerId) return;
-    if (target.userId) this.kickedUserIds.add(target.userId);
+    if (target.ip) this.kickedIPs.add(target.ip);
     this.sendTo(target.id, 100, 1);
     // Remove FIRST so id:2 broadcast carries the correct reason; disconnect AFTER
     this.removePlayer(target.id, 1);
@@ -630,7 +656,7 @@ class Room {
     if (actorId !== this.ownerId) return;
     const target = this.players.find((p) => p.id === targetId);
     if (!target || target.id === this.ownerId) return;
-    if (target.userId) this.bannedUserIds.add(target.userId);
+    if (target.ip) this.bannedIPs.add(target.ip);
     this.sendTo(target.id, 100, 2);
     this.removePlayer(target.id, 2);
     this.kickPlayerSocket(target);
@@ -679,7 +705,7 @@ class Room {
     this.broadcast(5, [voterId, targetId, count, required]);
     if (count >= required) {
       this.votekicks.delete(targetId);
-      if (target.userId) this.kickedUserIds.add(target.userId);
+      if (target.ip) this.kickedIPs.add(target.ip);
       // Remove FIRST so id:2 broadcast carries reason=1, then disconnect
       this.removePlayer(target.id, 1);
       this.kickPlayerSocket(target);
@@ -802,6 +828,7 @@ class Room {
   /* ---- lobby ops ---- */
   updateSetting(playerId, settingIdx, value) {
     if (playerId !== this.ownerId) return;
+    if (!Number.isInteger(settingIdx)) return;
     if (settingIdx < 0 || settingIdx > 7) return;
 
     // Bounds validation to prevent crashes
@@ -833,13 +860,13 @@ class GameEngine {
     this.deletionTimeouts = new Map(); // [FIX H4] Always initialized — never undefined
     this.disconnectTimers = new Map(); // Always initialized — prevents crash on first login before any disconnect
   }
-  publicRoomForLang(langId, userId, modeId = 'all') {
+  publicRoomForLang(langId, ip, modeId = 'all') {
     for (const room of this.rooms.values()) {
       if (room.type !== 0) continue;
       if (room.settings[0] !== langId) continue;
       if (room.modeId !== modeId) continue;
       if (room.players.length >= room.settings[1]) continue;
-      if (userId != null && (room.bannedUserIds.has(userId) || room.kickedUserIds.has(userId))) continue;
+      if (ip != null && (room.bannedIPs.has(ip) || room.kickedIPs.has(ip))) continue;
       return room;
     }
     return null;
