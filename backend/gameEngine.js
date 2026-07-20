@@ -223,8 +223,8 @@ class Room {
   startRound() {
     this.round += 1;
     if (this.round > this.settings[3]) return this.gameOver();
-    // Build drawer queue for this round (all real+bot players, randomized)
-    this.drawerQueue = [...this.players].sort(() => Math.random() - 0.5).map((p) => p.id);
+    // Build drawer queue for this round (deterministic order based on join order)
+    this.drawerQueue = this.players.map((p) => p.id);
     this.currentDrawerId = null;
     this.currentWord = null;
     this.changeState(STATE.F, 3, this.round - 1); // round index (0-based)
